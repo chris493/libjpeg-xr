@@ -28,27 +28,20 @@ OTHERINCLUDES = cderror.h cdjpeg.h jchuff.h jdct.h jdhuff.h jinclude.h \
         jmemsys.h jpegint.h jversion.h transupp.h
 
 # Manual pages (Automake uses 'MANS' for itself)
-DISTMANS= cjpeg.1 djpeg.1 jpegtran.1 rdjpgcom.1 wrjpgcom.1
+DISTMANS= cjpeg.1 djpeg.1 djpeg-xr.1 jpegtran.1 rdjpgcom.1 wrjpgcom.1
 
 # Other documentation files
 DOCS= README install.doc usage.doc wizard.doc example.c libjpeg.doc \
-	structure.doc coderules.doc filelist.doc change.log
+	structure.doc coderules.doc filelist.doc
 
 # Makefiles for various systems
-MKFILES= configure makefile.cfg makefile.ansi makefile.unix makefile.bcc \
-        makefile.mc6 makefile.dj makefile.wat makefile.vc makelib.ds \
-        makeapps.ds makeproj.mac makcjpeg.st makdjpeg.st makljpeg.st \
-        maktjpeg.st makefile.manx makefile.sas makefile.mms makefile.vms \
-        makvms.opt
+MKFILES= configure
 
 # Configuration files
-CONFIGFILES= jconfig.cfg jconfig.bcc jconfig.h.in jconfig.mc6 jconfig.dj \
-	jconfig.wat jconfig.vc jconfig.mac jconfig.st jconfig.manx \
-	jconfig.sas jconfig.vms
+CONFIGFILES= jconfig.h.in
 
 # Miscellaneous support files
-OTHERFILES= README.1st jconfig.doc ckconfig.c ansi2knr.c ansi2knr.1 \
-	jmemdosa.asm
+OTHERFILES= jconfig.doc ckconfig.c
 
 # Test support files
 TESTFILES= testorig.jpg testimg.ppm testimg.bmp testimg.jpg testprog.jpg \
@@ -68,13 +61,15 @@ libjpeg_la_LDFLAGS = -no-undefined \
 EXTRA_libjpeg_la_SOURCES = $(SYSDEPSOURCES)
 
 # Executables to build
-bin_PROGRAMS = cjpeg djpeg rdjpgcom wrjpgcom jpegtran
+bin_PROGRAMS = cjpeg djpeg djpeg-xr rdjpgcom wrjpgcom jpegtran
 
 # Executable sources & libs
 cjpeg_SOURCES    = cjpeg.c rdppm.c rdgif.c rdtarga.c rdrle.c rdbmp.c rdswitch.c cdjpeg.c
 cjpeg_LDADD      = libjpeg.la $(PNGLIBS)
 djpeg_SOURCES    = djpeg.c wrppm.c wrgif.c wrtarga.c wrrle.c wrbmp.c rdcolmap.c cdjpeg.c 
 djpeg_LDADD      = libjpeg.la $(PNGLIBS)
+djpeg-xr_SOURCES = djpeg.c wrppm.c wrgif.c wrtarga.c wrrle.c wrbmp.c rdcolmap.c cdjpeg.c 
+djpeg-xr_LDADD   = libjpeg.la $(PNGLIBS)
 jpegtran_SOURCES = jpegtran.c rdswitch.c cdjpeg.c transupp.c
 jpegtran_LDADD   = libjpeg.la
 rdjpgcom_SOURCES = rdjpgcom.c
@@ -123,16 +118,5 @@ dist-hook:
 test: check-local
 check-local:
 	$(RM) testout*
-	./djpeg -dct int -ppm -outfile testout.ppm  $(srcdir)/testorig.jpg
-	./djpeg -dct int -bmp -colors 256 -outfile testout.bmp  $(srcdir)/testorig.jpg
-	./cjpeg -dct int -outfile testout.jpg  $(srcdir)/testimg.ppm
-	./djpeg -dct int -ppm -outfile testoutp.ppm $(srcdir)/testprog.jpg
-	./cjpeg -dct int -progressive -opt -outfile testoutp.jpg $(srcdir)/testimg.ppm
-	./jpegtran -outfile testoutt.jpg $(srcdir)/testprog.jpg
-	cmp $(srcdir)/testimg.ppm testout.ppm
+	./djpeg-xr -dct int -bmp -colors 256 -outfile testout.bmp  $(srcdir)/testorig.jpg
 	cmp $(srcdir)/testimg.bmp testout.bmp
-	cmp $(srcdir)/testimg.jpg testout.jpg
-	cmp $(srcdir)/testimg.ppm testoutp.ppm
-	cmp $(srcdir)/testimgp.jpg testoutp.jpg
-	cmp $(srcdir)/testorig.jpg testoutt.jpg
-
