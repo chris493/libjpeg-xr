@@ -8,27 +8,25 @@
 AUTOMAKE_OPTIONS = 1.9 dist-zip dist-bzip2 foreign 
 
 # Sources to build library
-LIBSOURCES = jcapimin.c jcapistd.c jccoefct.c jccolor.c jcdctmgr.c jchuff.c \
-        jcinit.c jcmainct.c jcmarker.c jcmaster.c jcomapi.c jcparam.c \
-        jcphuff.c jcprepct.c jcsample.c jctrans.c jdapimin.c jdapistd.c \
-        jdatadst.c jdatasrc.c jdcoefct.c jdcolor.c jddctmgr.c jdhuff.c \
-        jdinput.c jdmainct.c jdmarker.c jdmaster.c jdmerge.c jdphuff.c \
-        jdpostct.c jdsample.c jdtrans.c jerror.c jfdctflt.c jfdctfst.c \
-        jfdctint.c jidctflt.c jidctfst.c jidctint.c jidctred.c jquant1.c \
-        jquant2.c jutils.c jmemmgr.c @MEMORYMGR@.c
+LIBSOURCES = jcmaster.c jxrcomapi.c jxrdapimin.c \
+        jdapistd.c jdatadst.c jdatasrc.c jdcoefct.c jdcolor.c jddctmgr.c \
+        jdhuff.c jdinput.c jdmainct.c jdmarker.c jdmaster.c jdmerge.c \
+        jdphuff.c jdpostct.c jdsample.c jdtrans.c jerror.c jfdctflt.c \
+        jfdctfst.c jfdctint.c jidctflt.c jidctfst.c jidctint.c \
+        jidctred.c jquant1.c jquant2.c jutils.c jmemmgr.c @MEMORYMGR@.c
 
 # System dependent sources
 SYSDEPSOURCES = jmemansi.c jmemname.c jmemnobs.c jmemdos.c jmemmac.c
 
 # Headers which are installed to support the library
-INSTINCLUDES  = jerror.h jmorecfg.h jpeglib.h
+INSTINCLUDES  = jerror.h jmorecfg.h jpegxrlib.h jpegxrlib.h
 
 # Headers which are not installed
-OTHERINCLUDES = cderror.h cdjpeg.h jchuff.h jdct.h jdhuff.h jinclude.h \
+OTHERINCLUDES = cderror.h cdjpeg-xr.h jdct.h jdhuff.h jinclude.h \
         jmemsys.h jpegint.h jversion.h transupp.h
 
 # Manual pages (Automake uses 'MANS' for itself)
-DISTMANS= cjpeg.1 djpeg.1 djpeg-xr.1 jpegtran.1 rdjpgcom.1 wrjpgcom.1
+DISTMANS= djpeg-xr.1
 
 # Other documentation files
 DOCS= README install.doc usage.doc wizard.doc example.c libjpeg.doc \
@@ -44,36 +42,27 @@ CONFIGFILES= jconfig.h.in
 OTHERFILES= jconfig.doc ckconfig.c
 
 # Test support files
-TESTFILES= testorig.jpg testimg.ppm testimg.bmp testimg.jpg testprog.jpg \
-	testimgp.jpg
+TESTFILES= testorig.jpg testimg.ppm testimg.bmp
 
 # libtool libraries to build
-lib_LTLIBRARIES = libjpeg.la
+lib_LTLIBRARIES = libjpeg-xr.la
 
-# Library sources for libjpeg.la
-libjpeg_la_SOURCES = $(LIBSOURCES)
+# Library sources for libjpeg-xr.la
+libjpeg_xr_la_SOURCES = $(LIBSOURCES)
 
-# LDFLAGS for libjpeg.la
-libjpeg_la_LDFLAGS = -no-undefined \
-	-version-info $(JPEG_LIB_VERSION)
+# LDFLAGS for libjpeg-xr.la
+libjpeg_xr_la_LDFLAGS = -no-undefined \
+	-version-info $(JPEGXR_LIB_VERSION)
 
-# Conditionally-build library sources for libjpeg.la
-EXTRA_libjpeg_la_SOURCES = $(SYSDEPSOURCES)
+# Conditionally-build library sources for libjpeg-xr.la
+EXTRA_libjpeg_xr_la_SOURCES = $(SYSDEPSOURCES)
 
 # Executables to build
-bin_PROGRAMS = cjpeg djpeg djpeg-xr rdjpgcom wrjpgcom jpegtran
+bin_PROGRAMS = djpeg-xr
 
 # Executable sources & libs
-cjpeg_SOURCES    = cjpeg.c rdppm.c rdgif.c rdtarga.c rdrle.c rdbmp.c rdswitch.c cdjpeg.c
-cjpeg_LDADD      = libjpeg.la $(PNGLIBS)
-djpeg_SOURCES    = djpeg.c wrppm.c wrgif.c wrtarga.c wrrle.c wrbmp.c rdcolmap.c cdjpeg.c 
-djpeg_LDADD      = libjpeg.la $(PNGLIBS)
-djpeg_xr_SOURCES = djpeg.c wrppm.c wrgif.c wrtarga.c wrrle.c wrbmp.c rdcolmap.c cdjpeg.c 
-djpeg_xr_LDADD   = libjpeg.la $(PNGLIBS)
-jpegtran_SOURCES = jpegtran.c rdswitch.c cdjpeg.c transupp.c
-jpegtran_LDADD   = libjpeg.la
-rdjpgcom_SOURCES = rdjpgcom.c
-wrjpgcom_SOURCES = wrjpgcom.c
+djpeg_xr_SOURCES = djpeg-xr.c wrppm.c wrgif.c wrtarga.c wrrle.c wrbmp.c rdcolmap.c cdjpeg-xr.c 
+djpeg_xr_LDADD   = libjpeg-xr.la $(PNGLIBS)
 
 # Manual pages to install
 man_MANS = $(DISTMANS)
@@ -89,7 +78,7 @@ EXTRA_DIST =  $(DOCS) $(DISTMANS) $(MKFILES) $(CONFIGFILES) $(SYSDEPSOURCES) \
         $(OTHERFILES) $(TESTFILES)
 
 # Files to be cleaned
-CLEANFILES = testout.ppm testout.bmp testout.jpg testoutp.ppm testoutp.jpg testoutt.jpg
+CLEANFILES = testout.ppm testout.bmp testout.jpg testoutp.ppm
 
 # Install jconfig_api.h
 install-data-local:
@@ -118,5 +107,7 @@ dist-hook:
 test: check-local
 check-local:
 	$(RM) testout*
+	./djpeg-xr -dct int -ppm -outfile testout.ppm  $(srcdir)/testorig.jpg
 	./djpeg-xr -dct int -bmp -colors 256 -outfile testout.bmp  $(srcdir)/testorig.jpg
+	cmp $(srcdir)/testimg.ppm testout.ppm
 	cmp $(srcdir)/testimg.bmp testout.bmp

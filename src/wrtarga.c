@@ -14,7 +14,7 @@
  * Based on code contributed by Lee Daniel Crocker.
  */
 
-#include "cdjpeg.h"		/* Common decls for cjpeg/djpeg applications */
+#include "cdjpeg-xr.h"		/* Common decls for cjpeg/djpeg applications */
 
 #ifdef TARGA_SUPPORTED
 

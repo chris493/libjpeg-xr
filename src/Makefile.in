@@ -43,8 +43,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
-bin_PROGRAMS = cjpeg$(EXEEXT) djpeg$(EXEEXT) djpeg-xr$(EXEEXT) \
-	rdjpgcom$(EXEEXT) wrjpgcom$(EXEEXT) jpegtran$(EXEEXT)
+bin_PROGRAMS = djpeg-xr$(EXEEXT)
 subdir = .
 DIST_COMMON = $(am__configure_deps) $(include_HEADERS) \
 	$(noinst_HEADERS) $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
@@ -89,49 +88,26 @@ am__base_list = \
 am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)" \
 	"$(DESTDIR)$(man1dir)" "$(DESTDIR)$(includedir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
-libjpeg_la_LIBADD =
-am__objects_1 = jcapimin.lo jcapistd.lo jccoefct.lo jccolor.lo \
-	jcdctmgr.lo jchuff.lo jcinit.lo jcmainct.lo jcmarker.lo \
-	jcmaster.lo jcomapi.lo jcparam.lo jcphuff.lo jcprepct.lo \
-	jcsample.lo jctrans.lo jdapimin.lo jdapistd.lo jdatadst.lo \
-	jdatasrc.lo jdcoefct.lo jdcolor.lo jddctmgr.lo jdhuff.lo \
-	jdinput.lo jdmainct.lo jdmarker.lo jdmaster.lo jdmerge.lo \
-	jdphuff.lo jdpostct.lo jdsample.lo jdtrans.lo jerror.lo \
-	jfdctflt.lo jfdctfst.lo jfdctint.lo jidctflt.lo jidctfst.lo \
-	jidctint.lo jidctred.lo jquant1.lo jquant2.lo jutils.lo \
-	jmemmgr.lo @MEMORYMGR@.lo
-am_libjpeg_la_OBJECTS = $(am__objects_1)
-libjpeg_la_OBJECTS = $(am_libjpeg_la_OBJECTS)
-libjpeg_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
+libjpeg_xr_la_LIBADD =
+am__objects_1 = jcmaster.lo jxrcomapi.lo jxrdapimin.lo jdapistd.lo \
+	jdatadst.lo jdatasrc.lo jdcoefct.lo jdcolor.lo jddctmgr.lo \
+	jdhuff.lo jdinput.lo jdmainct.lo jdmarker.lo jdmaster.lo \
+	jdmerge.lo jdphuff.lo jdpostct.lo jdsample.lo jdtrans.lo \
+	jerror.lo jfdctflt.lo jfdctfst.lo jfdctint.lo jidctflt.lo \
+	jidctfst.lo jidctint.lo jidctred.lo jquant1.lo jquant2.lo \
+	jutils.lo jmemmgr.lo @MEMORYMGR@.lo
+am_libjpeg_xr_la_OBJECTS = $(am__objects_1)
+libjpeg_xr_la_OBJECTS = $(am_libjpeg_xr_la_OBJECTS)
+libjpeg_xr_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
-	$(libjpeg_la_LDFLAGS) $(LDFLAGS) -o $@
+	$(libjpeg_xr_la_LDFLAGS) $(LDFLAGS) -o $@
 PROGRAMS = $(bin_PROGRAMS)
-am_cjpeg_OBJECTS = cjpeg.$(OBJEXT) rdppm.$(OBJEXT) rdgif.$(OBJEXT) \
-	rdtarga.$(OBJEXT) rdrle.$(OBJEXT) rdbmp.$(OBJEXT) \
-	rdswitch.$(OBJEXT) cdjpeg.$(OBJEXT)
-cjpeg_OBJECTS = $(am_cjpeg_OBJECTS)
-am__DEPENDENCIES_1 =
-cjpeg_DEPENDENCIES = libjpeg.la $(am__DEPENDENCIES_1)
-am_djpeg_OBJECTS = djpeg.$(OBJEXT) wrppm.$(OBJEXT) wrgif.$(OBJEXT) \
-	wrtarga.$(OBJEXT) wrrle.$(OBJEXT) wrbmp.$(OBJEXT) \
-	rdcolmap.$(OBJEXT) cdjpeg.$(OBJEXT)
-djpeg_OBJECTS = $(am_djpeg_OBJECTS)
-djpeg_DEPENDENCIES = libjpeg.la $(am__DEPENDENCIES_1)
-am_djpeg_xr_OBJECTS = djpeg.$(OBJEXT) wrppm.$(OBJEXT) wrgif.$(OBJEXT) \
-	wrtarga.$(OBJEXT) wrrle.$(OBJEXT) wrbmp.$(OBJEXT) \
-	rdcolmap.$(OBJEXT) cdjpeg.$(OBJEXT)
+am_djpeg_xr_OBJECTS = djpeg-xr.$(OBJEXT) wrppm.$(OBJEXT) \
+	wrgif.$(OBJEXT) wrtarga.$(OBJEXT) wrrle.$(OBJEXT) \
+	wrbmp.$(OBJEXT) rdcolmap.$(OBJEXT) cdjpeg-xr.$(OBJEXT)
 djpeg_xr_OBJECTS = $(am_djpeg_xr_OBJECTS)
-djpeg_xr_DEPENDENCIES = libjpeg.la $(am__DEPENDENCIES_1)
-am_jpegtran_OBJECTS = jpegtran.$(OBJEXT) rdswitch.$(OBJEXT) \
-	cdjpeg.$(OBJEXT) transupp.$(OBJEXT)
-jpegtran_OBJECTS = $(am_jpegtran_OBJECTS)
-jpegtran_DEPENDENCIES = libjpeg.la
-am_rdjpgcom_OBJECTS = rdjpgcom.$(OBJEXT)
-rdjpgcom_OBJECTS = $(am_rdjpgcom_OBJECTS)
-rdjpgcom_LDADD = $(LDADD)
-am_wrjpgcom_OBJECTS = wrjpgcom.$(OBJEXT)
-wrjpgcom_OBJECTS = $(am_wrjpgcom_OBJECTS)
-wrjpgcom_LDADD = $(LDADD)
+am__DEPENDENCIES_1 =
+djpeg_xr_DEPENDENCIES = libjpeg-xr.la $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -145,12 +121,10 @@ CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(libjpeg_la_SOURCES) $(EXTRA_libjpeg_la_SOURCES) \
-	$(cjpeg_SOURCES) $(djpeg_SOURCES) $(djpeg_xr_SOURCES) \
-	$(jpegtran_SOURCES) $(rdjpgcom_SOURCES) $(wrjpgcom_SOURCES)
-DIST_SOURCES = $(libjpeg_la_SOURCES) $(EXTRA_libjpeg_la_SOURCES) \
-	$(cjpeg_SOURCES) $(djpeg_SOURCES) $(djpeg_xr_SOURCES) \
-	$(jpegtran_SOURCES) $(rdjpgcom_SOURCES) $(wrjpgcom_SOURCES)
+SOURCES = $(libjpeg_xr_la_SOURCES) $(EXTRA_libjpeg_xr_la_SOURCES) \
+	$(djpeg_xr_SOURCES)
+DIST_SOURCES = $(libjpeg_xr_la_SOURCES) $(EXTRA_libjpeg_xr_la_SOURCES) \
+	$(djpeg_xr_SOURCES)
 man1dir = $(mandir)/man1
 NROFF = nroff
 MANS = $(man_MANS)
@@ -199,7 +173,7 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
-JPEG_LIB_VERSION = @JPEG_LIB_VERSION@
+JPEGXR_LIB_VERSION = @JPEGXR_LIB_VERSION@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
@@ -295,29 +269,27 @@ top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = 1.9 dist-zip dist-bzip2 foreign 
 
 # Sources to build library
-LIBSOURCES = jcapimin.c jcapistd.c jccoefct.c jccolor.c jcdctmgr.c jchuff.c \
-        jcinit.c jcmainct.c jcmarker.c jcmaster.c jcomapi.c jcparam.c \
-        jcphuff.c jcprepct.c jcsample.c jctrans.c jdapimin.c jdapistd.c \
-        jdatadst.c jdatasrc.c jdcoefct.c jdcolor.c jddctmgr.c jdhuff.c \
-        jdinput.c jdmainct.c jdmarker.c jdmaster.c jdmerge.c jdphuff.c \
-        jdpostct.c jdsample.c jdtrans.c jerror.c jfdctflt.c jfdctfst.c \
-        jfdctint.c jidctflt.c jidctfst.c jidctint.c jidctred.c jquant1.c \
-        jquant2.c jutils.c jmemmgr.c @MEMORYMGR@.c
+LIBSOURCES = jcmaster.c jxrcomapi.c jxrdapimin.c \
+        jdapistd.c jdatadst.c jdatasrc.c jdcoefct.c jdcolor.c jddctmgr.c \
+        jdhuff.c jdinput.c jdmainct.c jdmarker.c jdmaster.c jdmerge.c \
+        jdphuff.c jdpostct.c jdsample.c jdtrans.c jerror.c jfdctflt.c \
+        jfdctfst.c jfdctint.c jidctflt.c jidctfst.c jidctint.c \
+        jidctred.c jquant1.c jquant2.c jutils.c jmemmgr.c @MEMORYMGR@.c
 
 
 # System dependent sources
 SYSDEPSOURCES = jmemansi.c jmemname.c jmemnobs.c jmemdos.c jmemmac.c
 
 # Headers which are installed to support the library
-INSTINCLUDES = jerror.h jmorecfg.h jpeglib.h
+INSTINCLUDES = jerror.h jmorecfg.h jpegxrlib.h jpegxrlib.h
 
 # Headers which are not installed
-OTHERINCLUDES = cderror.h cdjpeg.h jchuff.h jdct.h jdhuff.h jinclude.h \
+OTHERINCLUDES = cderror.h cdjpeg-xr.h jdct.h jdhuff.h jinclude.h \
         jmemsys.h jpegint.h jversion.h transupp.h
 
 
 # Manual pages (Automake uses 'MANS' for itself)
-DISTMANS = cjpeg.1 djpeg.1 djpeg-xr.1 jpegtran.1 rdjpgcom.1 wrjpgcom.1
+DISTMANS = djpeg-xr.1
 
 # Other documentation files
 DOCS = README install.doc usage.doc wizard.doc example.c libjpeg.doc \
@@ -334,35 +306,25 @@ CONFIGFILES = jconfig.h.in
 OTHERFILES = jconfig.doc ckconfig.c
 
 # Test support files
-TESTFILES = testorig.jpg testimg.ppm testimg.bmp testimg.jpg testprog.jpg \
-	testimgp.jpg
-
+TESTFILES = testorig.jpg testimg.ppm testimg.bmp
 
 # libtool libraries to build
-lib_LTLIBRARIES = libjpeg.la
+lib_LTLIBRARIES = libjpeg-xr.la
 
-# Library sources for libjpeg.la
-libjpeg_la_SOURCES = $(LIBSOURCES)
+# Library sources for libjpeg-xr.la
+libjpeg_xr_la_SOURCES = $(LIBSOURCES)
 
-# LDFLAGS for libjpeg.la
-libjpeg_la_LDFLAGS = -no-undefined \
-	-version-info $(JPEG_LIB_VERSION)
+# LDFLAGS for libjpeg-xr.la
+libjpeg_xr_la_LDFLAGS = -no-undefined \
+	-version-info $(JPEGXR_LIB_VERSION)
 
 
-# Conditionally-build library sources for libjpeg.la
-EXTRA_libjpeg_la_SOURCES = $(SYSDEPSOURCES)
+# Conditionally-build library sources for libjpeg-xr.la
+EXTRA_libjpeg_xr_la_SOURCES = $(SYSDEPSOURCES)
 
 # Executable sources & libs
-cjpeg_SOURCES = cjpeg.c rdppm.c rdgif.c rdtarga.c rdrle.c rdbmp.c rdswitch.c cdjpeg.c
-cjpeg_LDADD = libjpeg.la $(PNGLIBS)
-djpeg_SOURCES = djpeg.c wrppm.c wrgif.c wrtarga.c wrrle.c wrbmp.c rdcolmap.c cdjpeg.c 
-djpeg_LDADD = libjpeg.la $(PNGLIBS)
-djpeg_xr_SOURCES = djpeg.c wrppm.c wrgif.c wrtarga.c wrrle.c wrbmp.c rdcolmap.c cdjpeg.c 
-djpeg_xr_LDADD = libjpeg.la $(PNGLIBS)
-jpegtran_SOURCES = jpegtran.c rdswitch.c cdjpeg.c transupp.c
-jpegtran_LDADD = libjpeg.la
-rdjpgcom_SOURCES = rdjpgcom.c
-wrjpgcom_SOURCES = wrjpgcom.c
+djpeg_xr_SOURCES = djpeg-xr.c wrppm.c wrgif.c wrtarga.c wrrle.c wrbmp.c rdcolmap.c cdjpeg-xr.c 
+djpeg_xr_LDADD = libjpeg-xr.la $(PNGLIBS)
 
 # Manual pages to install
 man_MANS = $(DISTMANS)
@@ -379,7 +341,7 @@ EXTRA_DIST = $(DOCS) $(DISTMANS) $(MKFILES) $(CONFIGFILES) $(SYSDEPSOURCES) \
 
 
 # Files to be cleaned
-CLEANFILES = testout.ppm testout.bmp testout.jpg testoutp.ppm testoutp.jpg testoutt.jpg
+CLEANFILES = testout.ppm testout.bmp testout.jpg testoutp.ppm
 
 # Non-Automake subdirectories to distribute
 DISTDIRS = m4 config
@@ -480,8 +442,8 @@ clean-libLTLIBRARIES:
 	  echo "rm -f \"$${dir}/so_locations\""; \
 	  rm -f "$${dir}/so_locations"; \
 	done
-libjpeg.la: $(libjpeg_la_OBJECTS) $(libjpeg_la_DEPENDENCIES) 
-	$(libjpeg_la_LINK) -rpath $(libdir) $(libjpeg_la_OBJECTS) $(libjpeg_la_LIBADD) $(LIBS)
+libjpeg-xr.la: $(libjpeg_xr_la_OBJECTS) $(libjpeg_xr_la_DEPENDENCIES) 
+	$(libjpeg_xr_la_LINK) -rpath $(libdir) $(libjpeg_xr_la_OBJECTS) $(libjpeg_xr_la_LIBADD) $(LIBS)
 install-binPROGRAMS: $(bin_PROGRAMS)
 	@$(NORMAL_INSTALL)
 	test -z "$(bindir)" || $(MKDIR_P) "$(DESTDIR)$(bindir)"
@@ -525,24 +487,9 @@ clean-binPROGRAMS:
 	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
 	echo " rm -f" $$list; \
 	rm -f $$list
-cjpeg$(EXEEXT): $(cjpeg_OBJECTS) $(cjpeg_DEPENDENCIES) 
-	@rm -f cjpeg$(EXEEXT)
-	$(LINK) $(cjpeg_OBJECTS) $(cjpeg_LDADD) $(LIBS)
-djpeg$(EXEEXT): $(djpeg_OBJECTS) $(djpeg_DEPENDENCIES) 
-	@rm -f djpeg$(EXEEXT)
-	$(LINK) $(djpeg_OBJECTS) $(djpeg_LDADD) $(LIBS)
 djpeg-xr$(EXEEXT): $(djpeg_xr_OBJECTS) $(djpeg_xr_DEPENDENCIES) 
 	@rm -f djpeg-xr$(EXEEXT)
 	$(LINK) $(djpeg_xr_OBJECTS) $(djpeg_xr_LDADD) $(LIBS)
-jpegtran$(EXEEXT): $(jpegtran_OBJECTS) $(jpegtran_DEPENDENCIES) 
-	@rm -f jpegtran$(EXEEXT)
-	$(LINK) $(jpegtran_OBJECTS) $(jpegtran_LDADD) $(LIBS)
-rdjpgcom$(EXEEXT): $(rdjpgcom_OBJECTS) $(rdjpgcom_DEPENDENCIES) 
-	@rm -f rdjpgcom$(EXEEXT)
-	$(LINK) $(rdjpgcom_OBJECTS) $(rdjpgcom_LDADD) $(LIBS)
-wrjpgcom$(EXEEXT): $(wrjpgcom_OBJECTS) $(wrjpgcom_DEPENDENCIES) 
-	@rm -f wrjpgcom$(EXEEXT)
-	$(LINK) $(wrjpgcom_OBJECTS) $(wrjpgcom_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -551,26 +498,9 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/@MEMORYMGR@.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cdjpeg.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cjpeg.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/djpeg.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jcapimin.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jcapistd.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jccoefct.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jccolor.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jcdctmgr.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jchuff.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jcinit.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jcmainct.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jcmarker.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cdjpeg-xr.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/djpeg-xr.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jcmaster.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jcomapi.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jcparam.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jcphuff.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jcprepct.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jcsample.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jctrans.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdapimin.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdapistd.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdatadst.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdatasrc.Plo@am__quote@
@@ -601,22 +531,14 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jmemmgr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jmemname.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jmemnobs.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jpegtran.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jquant1.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jquant2.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jutils.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rdbmp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jxrcomapi.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jxrdapimin.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rdcolmap.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rdgif.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rdjpgcom.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rdppm.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rdrle.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rdswitch.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rdtarga.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/transupp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wrbmp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wrgif.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wrjpgcom.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wrppm.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wrrle.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wrtarga.Po@am__quote@
@@ -1086,7 +1008,9 @@ dist-hook:
 test: check-local
 check-local:
 	$(RM) testout*
+	./djpeg-xr -dct int -ppm -outfile testout.ppm  $(srcdir)/testorig.jpg
 	./djpeg-xr -dct int -bmp -colors 256 -outfile testout.bmp  $(srcdir)/testorig.jpg
+	cmp $(srcdir)/testimg.ppm testout.ppm
 	cmp $(srcdir)/testimg.bmp testout.bmp
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.

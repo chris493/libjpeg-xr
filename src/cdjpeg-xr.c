@@ -1,15 +1,14 @@
 /*
- * cdjpeg.c
+ * cdjpeg-xr.c
  *
  * Copyright (C) 1991-1997, Thomas G. Lane.
  * This file is part of the Independent JPEG Group's software.
  * For conditions of distribution and use, see the accompanying README file.
  *
- * This file contains common support routines used by the IJG application
- * programs (cjpeg, djpeg, jpegtran).
+ * This file contains common support routines used by djpeg-xr.
  */
 
-#include "cdjpeg.h"		/* Common decls for cjpeg/djpeg applications */
+#include "cdjpeg-xr.h"		/* Common decls for cjpeg/djpeg applications */
 #include <ctype.h>		/* to declare isupper(), tolower() */
 #ifdef NEED_SIGNAL_CATCHER
 #include <signal.h>		/* to declare signal() */

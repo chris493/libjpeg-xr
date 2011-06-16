@@ -16,7 +16,7 @@
  * with updates from Robert Hutchinson.
  */
 
-#include "cdjpeg.h"		/* Common decls for cjpeg/djpeg applications */
+#include "cdjpeg-xr.h"		/* Common decls for cjpeg/djpeg applications */
 
 #ifdef RLE_SUPPORTED
 

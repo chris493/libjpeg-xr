@@ -1,17 +1,17 @@
 /*
- * djpeg.c
+ * djpeg-xr.c
  *
+ * Copyright (C) 2011, Chris Harding.
  * Copyright (C) 1991-1997, Thomas G. Lane.
  * This file is part of the Independent JPEG Group's software.
  * For conditions of distribution and use, see the accompanying README file.
  *
- * This file contains a command-line user interface for the JPEG decompressor.
- * It should work on any system with Unix- or MS-DOS-style command lines.
+ * This file contains a command-line user interface for the JPEG-XR decompressor.
  *
  * Two different command line styles are permitted, depending on the
  * compile-time switch TWO_FILE_COMMANDLINE:
- *	djpeg [options]  inputfile outputfile
- *	djpeg [options]  [inputfile]
+ *	djpeg-xr [options]  inputfile outputfile
+ *	djpeg-xr [options]  [inputfile]
  * In the second style, output is always to standard output, which you'd
  * normally redirect to a file or pipe to some other program.  Input is
  * either from a named file or from standard input (typically redirected).
@@ -19,11 +19,11 @@
  * don't support pipes.  Also, you MUST use the first style if your system
  * doesn't do binary I/O to stdin/stdout.
  * To simplify script writing, the "-outfile" switch is provided.  The syntax
- *	djpeg [options]  -outfile outputfile  inputfile
+ *	djpeg-xr [options]  -outfile outputfile  inputfile
  * works regardless of which command line style is used.
  */
 
-#include "cdjpeg.h"		/* Common decls for cjpeg/djpeg applications */
+#include "cdjpeg-xr.h"		/* Common decls for cjpeg-xr/djpeg-xr applications */
 #include "jversion.h"		/* for version message */
 
 #include <ctype.h>		/* to declare isprint() */
@@ -240,7 +240,7 @@ parse_switches (j_decompress_ptr cinfo, int argc, char **argv,
       static boolean printed_version = FALSE;
 
       if (! printed_version) {
-	fprintf(stderr, "Independent JPEG Group's DJPEG, version %s\n%s\n",
+	fprintf(stderr, "Mozilla DJPEG-XR, version %s\n%s\n",
 		JVERSION, JCOPYRIGHT);
 	printed_version = TRUE;
       }
@@ -423,7 +423,7 @@ print_text_marker (j_decompress_ptr cinfo)
 int
 main (int argc, char **argv)
 {
-  struct jpeg_decompress_struct cinfo;
+  struct jpegxr_decompress_struct cinfo;
   struct jpeg_error_mgr jerr;
 #ifdef PROGRESS_REPORT
   struct cdjpeg_progress_mgr progress;
@@ -441,11 +441,11 @@ main (int argc, char **argv)
 
   progname = argv[0];
   if (progname == NULL || progname[0] == 0)
-    progname = "djpeg";		/* in case C library doesn't provide it */
+    progname = "djpeg-xr";		/* in case C library doesn't provide it */
 
   /* Initialize the JPEG decompression object with default error handling. */
   cinfo.err = jpeg_std_error(&jerr);
-  jpeg_create_decompress(&cinfo);
+  jpegxr_create_decompress(&cinfo);
   /* Add some application-specific error messages (from cderror.h) */
   jerr.addon_message_table = cdjpeg_message_table;
   jerr.first_addon_message = JMSG_FIRSTADDONCODE;
@@ -529,76 +529,15 @@ main (int argc, char **argv)
   jpeg_stdio_src(&cinfo, input_file);
 
   /* Read file header, set default decompression parameters */
-  (void) jpeg_read_header(&cinfo, TRUE);
+  (void) jpegxr_read_header(&cinfo, TRUE);
 
-  /* Adjust default decompression parameters by re-parsing the options */
-  file_index = parse_switches(&cinfo, argc, argv, 0, TRUE);
 
-  /* Initialize the output module now to let it override any crucial
-   * option settings (for instance, GIF wants to force color quantization).
-   */
-  switch (requested_fmt) {
-#ifdef BMP_SUPPORTED
-  case FMT_BMP:
-    dest_mgr = jinit_write_bmp(&cinfo, FALSE);
-    break;
-  case FMT_OS2:
-    dest_mgr = jinit_write_bmp(&cinfo, TRUE);
-    break;
-#endif
-#ifdef GIF_SUPPORTED
-  case FMT_GIF:
-    dest_mgr = jinit_write_gif(&cinfo);
-    break;
-#endif
-#ifdef PPM_SUPPORTED
-  case FMT_PPM:
-    dest_mgr = jinit_write_ppm(&cinfo);
-    break;
-#endif
-#ifdef RLE_SUPPORTED
-  case FMT_RLE:
-    dest_mgr = jinit_write_rle(&cinfo);
-    break;
-#endif
-#ifdef TARGA_SUPPORTED
-  case FMT_TARGA:
-    dest_mgr = jinit_write_targa(&cinfo);
-    break;
-#endif
-  default:
-    ERREXIT(&cinfo, JERR_UNSUPPORTED_FORMAT);
-    break;
-  }
-  dest_mgr->output_file = output_file;
+	/* Verify header was read succesfully */
+	fprintf(stdout, "Dummy djpeg-xr called.\n");
 
-  /* Start decompressor */
-  (void) jpeg_start_decompress(&cinfo);
 
-  /* Write output file header */
-  (*dest_mgr->start_output) (&cinfo, dest_mgr);
-
-  /* Process data */
-  while (cinfo.output_scanline < cinfo.output_height) {
-    num_scanlines = jpeg_read_scanlines(&cinfo, dest_mgr->buffer,
-					dest_mgr->buffer_height);
-    (*dest_mgr->put_pixel_rows) (&cinfo, dest_mgr, num_scanlines);
-  }
-
-#ifdef PROGRESS_REPORT
-  /* Hack: count final pass as done in case finish_output does an extra pass.
-   * The library won't have updated completed_passes.
-   */
-  progress.pub.completed_passes = progress.pub.total_passes;
-#endif
-
-  /* Finish decompression and release memory.
-   * I must do it in this order because output module has allocated memory
-   * of lifespan JPOOL_IMAGE; it needs to finish before releasing memory.
-   */
-  (*dest_mgr->finish_output) (&cinfo, dest_mgr);
-  (void) jpeg_finish_decompress(&cinfo);
-  jpeg_destroy_decompress(&cinfo);
+  /* Abort decompression and release memory. */
+  jpegxr_destroy_decompress(&cinfo);
 
   /* Close files, if we opened them */
   if (input_file != stdin)

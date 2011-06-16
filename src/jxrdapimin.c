@@ -1,5 +1,5 @@
 /*
- * jdapimin.c
+ * jxrdapimin.c
  *
  * Copyright (C) 1994-1998, Thomas G. Lane.
  * This file is part of the Independent JPEG Group's software.
@@ -11,14 +11,14 @@
  * transcoding-only case.
  *
  * Most of the routines intended to be called directly by an application
- * are in this file or in jdapistd.c.  But also see jcomapi.c for routines
+ * are in this file or in jdapistd.c.  But also see jxrcomapi.c for routines
  * shared by compression and decompression, and jdtrans.c for the transcoding
  * case.
  */
 
 #define JPEG_INTERNALS
 #include "jinclude.h"
-#include "jpeglib.h"
+#include "jpegxrlib.h"
 
 
 /*
@@ -27,17 +27,17 @@
  */
 
 GLOBAL(void)
-jpeg_CreateDecompress (j_decompress_ptr cinfo, int version, size_t structsize)
+jpegxr_CreateDecompress (j_decompress_ptr cinfo, int version, size_t structsize)
 {
   int i;
 
   /* Guard against version mismatches between library and caller. */
   cinfo->mem = NULL;		/* so jpeg_destroy knows mem mgr not called */
-  if (version != JPEG_LIB_VERSION)
-    ERREXIT2(cinfo, JERR_BAD_LIB_VERSION, JPEG_LIB_VERSION, version);
-  if (structsize != SIZEOF(struct jpeg_decompress_struct))
+  if (version != JPEGXR_LIB_VERSION)
+    ERREXIT2(cinfo, JERR_BAD_LIB_VERSION, JPEGXR_LIB_VERSION, version);
+  if (structsize != SIZEOF(struct jpegxr_decompress_struct))
     ERREXIT2(cinfo, JERR_BAD_STRUCT_SIZE, 
-	     (int) SIZEOF(struct jpeg_decompress_struct), (int) structsize);
+	     (int) SIZEOF(struct jpegxr_decompress_struct), (int) structsize);
 
   /* For debugging purposes, we zero the whole master structure.
    * But the application has already set the err pointer, and may have set
@@ -48,7 +48,7 @@ jpeg_CreateDecompress (j_decompress_ptr cinfo, int version, size_t structsize)
   {
     struct jpeg_error_mgr * err = cinfo->err;
     void * client_data = cinfo->client_data; /* ignore Purify complaint here */
-    MEMZERO(cinfo, SIZEOF(struct jpeg_decompress_struct));
+    MEMZERO(cinfo, SIZEOF(struct jpegxr_decompress_struct));
     cinfo->err = err;
     cinfo->client_data = client_data;
   }
@@ -88,9 +88,9 @@ jpeg_CreateDecompress (j_decompress_ptr cinfo, int version, size_t structsize)
  */
 
 GLOBAL(void)
-jpeg_destroy_decompress (j_decompress_ptr cinfo)
+jpegxr_destroy_decompress (j_decompress_ptr cinfo)
 {
-  jpeg_destroy((j_common_ptr) cinfo); /* use common routine */
+  jpegxr_destroy((j_common_ptr) cinfo); /* use common routine */
 }
 
 
@@ -238,7 +238,7 @@ default_decompress_parms (j_decompress_ptr cinfo)
  */
 
 GLOBAL(int)
-jpeg_read_header (j_decompress_ptr cinfo, boolean require_image)
+jpegxr_read_header (j_decompress_ptr cinfo, boolean require_image)
 {
   int retcode;
 

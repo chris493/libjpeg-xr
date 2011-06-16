@@ -308,11 +308,11 @@ if test "x$with_png" = xyes ; then
 fi
 AC_SUBST([PNGLIBS])
 
-# Extract the library version ID from jpeglib.h.
+# Extract the library version ID from jpegxrlib.h.
 AC_MSG_CHECKING([libjpeg version number])
-[JPEG_LIB_VERSION=`sed -e '/^#define JPEG_LIB_VERSION/!d' -e 's/^[^0-9]*\([0-9][0-9]*\).*$/\1/' $srcdir/jpeglib.h`]
-AC_MSG_RESULT([$JPEG_LIB_VERSION])
-AC_SUBST([JPEG_LIB_VERSION])
+[JPEGXR_LIB_VERSION=`sed -e '/^#define JPEGXR_LIB_VERSION/!d' -e 's/^[^0-9]*\([0-9][0-9]*\).*$/\1/' $srcdir/jpegxrlib.h`]
+AC_MSG_RESULT([$JPEGXR_LIB_VERSION])
+AC_SUBST([JPEGXR_LIB_VERSION])
 
 dnl
 AC_OUTPUT([Makefile])

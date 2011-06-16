@@ -21,7 +21,7 @@
  * currently implemented.
  */
 
-#include "cdjpeg.h"		/* Common decls for cjpeg/djpeg applications */
+#include "cdjpeg-xr.h"		/* Common decls for cjpeg/djpeg applications */
 
 #ifdef QUANT_2PASS_SUPPORTED	/* otherwise can't quantize to supplied map */
 
