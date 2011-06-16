@@ -405,7 +405,6 @@ struct jpeg_compress_struct {
   int script_space_size;
 };
 
-
 /* Master record for a decompression instance */
 
 struct jpegxr_decompress_struct {

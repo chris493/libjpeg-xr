@@ -344,79 +344,6 @@ parse_switches (j_decompress_ptr cinfo, int argc, char **argv,
 
 
 /*
- * Marker processor for COM and interesting APPn markers.
- * This replaces the library's built-in processor, which just skips the marker.
- * We want to print out the marker as text, to the extent possible.
- * Note this code relies on a non-suspending data source.
- */
-
-LOCAL(unsigned int)
-jpeg_getc (j_decompress_ptr cinfo)
-/* Read next byte */
-{
-  struct jpeg_source_mgr * datasrc = cinfo->src;
-
-  if (datasrc->bytes_in_buffer == 0) {
-    if (! (*datasrc->fill_input_buffer) (cinfo))
-      ERREXIT(cinfo, JERR_CANT_SUSPEND);
-  }
-  datasrc->bytes_in_buffer--;
-  return GETJOCTET(*datasrc->next_input_byte++);
-}
-
-
-METHODDEF(boolean)
-print_text_marker (j_decompress_ptr cinfo)
-{
-  boolean traceit = (cinfo->err->trace_level >= 1);
-  INT32 length;
-  unsigned int ch;
-  unsigned int lastch = 0;
-
-  length = jpeg_getc(cinfo) << 8;
-  length += jpeg_getc(cinfo);
-  length -= 2;			/* discount the length word itself */
-
-  if (traceit) {
-    if (cinfo->unread_marker == JPEG_COM)
-      fprintf(stderr, "Comment, length %ld:\n", (long) length);
-    else			/* assume it is an APPn otherwise */
-      fprintf(stderr, "APP%d, length %ld:\n",
-	      cinfo->unread_marker - JPEG_APP0, (long) length);
-  }
-
-  while (--length >= 0) {
-    ch = jpeg_getc(cinfo);
-    if (traceit) {
-      /* Emit the character in a readable form.
-       * Nonprintables are converted to \nnn form,
-       * while \ is converted to \\.
-       * Newlines in CR, CR/LF, or LF form will be printed as one newline.
-       */
-      if (ch == '\r') {
-	fprintf(stderr, "\n");
-      } else if (ch == '\n') {
-	if (lastch != '\r')
-	  fprintf(stderr, "\n");
-      } else if (ch == '\\') {
-	fprintf(stderr, "\\\\");
-      } else if (isprint(ch)) {
-	putc(ch, stderr);
-      } else {
-	fprintf(stderr, "\\%03o", ch);
-      }
-      lastch = ch;
-    }
-  }
-
-  if (traceit)
-    fprintf(stderr, "\n");
-
-  return TRUE;
-}
-
-
-/*
  * The main program.
  */
 
@@ -429,7 +356,6 @@ main (int argc, char **argv)
   struct cdjpeg_progress_mgr progress;
 #endif
   int file_index;
-  djpeg_dest_ptr dest_mgr = NULL;
   FILE * input_file;
   FILE * output_file;
   JDIMENSION num_scanlines;
@@ -450,15 +376,6 @@ main (int argc, char **argv)
   jerr.addon_message_table = cdjpeg_message_table;
   jerr.first_addon_message = JMSG_FIRSTADDONCODE;
   jerr.last_addon_message = JMSG_LASTADDONCODE;
-
-  /* Insert custom marker processor for COM and APP12.
-   * APP12 is used by some digital camera makers for textual info,
-   * so we provide the ability to display it as text.
-   * If you like, additional APPn marker types can be selected for display,
-   * but don't try to override APP0 or APP14 this way (see libjpeg.doc).
-   */
-  jpeg_set_marker_processor(&cinfo, JPEG_COM, print_text_marker);
-  jpeg_set_marker_processor(&cinfo, JPEG_APP0+12, print_text_marker);
 
   /* Now safe to enable signal catcher. */
 #ifdef NEED_SIGNAL_CATCHER
