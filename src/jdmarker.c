@@ -957,11 +957,11 @@ read_markers (j_decompress_ptr cinfo)
     /* NB: first_marker() enforces the requirement that SOI appear first. */
     if (cinfo->unread_marker == 0) {
       if (! cinfo->marker->saw_SOI) {
-	if (! first_marker(cinfo))
-	  return JPEG_SUSPENDED;
+        if (! first_marker(cinfo))
+          return JPEG_SUSPENDED;
       } else {
-	if (! next_marker(cinfo))
-	  return JPEG_SUSPENDED;
+        if (! next_marker(cinfo))
+          return JPEG_SUSPENDED;
       }
     }
     /* At this point cinfo->unread_marker contains the marker code and the
