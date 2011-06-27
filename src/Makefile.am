@@ -8,10 +8,10 @@
 AUTOMAKE_OPTIONS = 1.9 dist-zip dist-bzip2 foreign 
 
 # Sources to build library
-LIBSOURCES = jcmaster.c jxrcomapi.c jxrdapimin.c \
-        jdapistd.c jdatadst.c jdatasrc.c jdcoefct.c jdcolor.c jddctmgr.c \
-        jdhuff.c jdinput.c jdmainct.c jdmarker.c jdmaster.c jdmerge.c \
-        jdphuff.c jdpostct.c jdsample.c jdtrans.c jerror.c jfdctflt.c \
+LIBSOURCES = jxrcomapi.c jxrdapimin.c \
+        jdapistd.c jdatadst.c jdatasrc.c jdcoefct.c jdcolor.c \
+        jdinput.c jdmainct.c jdmarker.c jdmaster.c jdmerge.c \
+        jdpostct.c jdsample.c jdtrans.c jerror.c jfdctflt.c \
         jfdctfst.c jfdctint.c jidctflt.c jidctfst.c jidctint.c \
         jidctred.c jquant1.c jquant2.c jutils.c jmemmgr.c @MEMORYMGR@.c
 
@@ -22,7 +22,7 @@ SYSDEPSOURCES = jmemansi.c jmemname.c jmemnobs.c jmemdos.c jmemmac.c
 INSTINCLUDES  = jerror.h jmorecfg.h jpegxrlib.h jpegxrlib.h
 
 # Headers which are not installed
-OTHERINCLUDES = cderror.h cdjpeg-xr.h jdct.h jdhuff.h jinclude.h \
+OTHERINCLUDES = cderror.h cdjpeg-xr.h jdct.h jinclude.h \
         jmemsys.h jpegint.h jversion.h transupp.h
 
 # Manual pages (Automake uses 'MANS' for itself)

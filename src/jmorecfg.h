@@ -149,6 +149,13 @@ typedef unsigned short UINT16;
 typedef unsigned int UINT16;
 #endif /* HAVE_UNSIGNED_SHORT */
 
+
+/* UINT32 must hold at least the values 0..(2^32 -1) */
+typedef unsigned long UINT32;
+/* UINT64 must hold at least the values 0..(2^64 -1) */
+typedef unsigned long long UINT64;
+
+
 /* INT16 must hold at least the values -32768..32767. */
 
 #ifndef XMD_H			/* X11/xmd.h correctly defines INT16 */

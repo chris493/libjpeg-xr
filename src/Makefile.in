@@ -89,13 +89,12 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)" \
 	"$(DESTDIR)$(man1dir)" "$(DESTDIR)$(includedir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libjpeg_xr_la_LIBADD =
-am__objects_1 = jcmaster.lo jxrcomapi.lo jxrdapimin.lo jdapistd.lo \
-	jdatadst.lo jdatasrc.lo jdcoefct.lo jdcolor.lo jddctmgr.lo \
-	jdhuff.lo jdinput.lo jdmainct.lo jdmarker.lo jdmaster.lo \
-	jdmerge.lo jdphuff.lo jdpostct.lo jdsample.lo jdtrans.lo \
-	jerror.lo jfdctflt.lo jfdctfst.lo jfdctint.lo jidctflt.lo \
-	jidctfst.lo jidctint.lo jidctred.lo jquant1.lo jquant2.lo \
-	jutils.lo jmemmgr.lo @MEMORYMGR@.lo
+am__objects_1 = jxrcomapi.lo jxrdapimin.lo jdapistd.lo jdatadst.lo \
+	jdatasrc.lo jdcoefct.lo jdcolor.lo jdinput.lo jdmainct.lo \
+	jdmarker.lo jdmaster.lo jdmerge.lo jdpostct.lo jdsample.lo \
+	jdtrans.lo jerror.lo jfdctflt.lo jfdctfst.lo jfdctint.lo \
+	jidctflt.lo jidctfst.lo jidctint.lo jidctred.lo jquant1.lo \
+	jquant2.lo jutils.lo jmemmgr.lo @MEMORYMGR@.lo
 am_libjpeg_xr_la_OBJECTS = $(am__objects_1)
 libjpeg_xr_la_OBJECTS = $(am_libjpeg_xr_la_OBJECTS)
 libjpeg_xr_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
@@ -269,10 +268,10 @@ top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = 1.9 dist-zip dist-bzip2 foreign 
 
 # Sources to build library
-LIBSOURCES = jcmaster.c jxrcomapi.c jxrdapimin.c \
-        jdapistd.c jdatadst.c jdatasrc.c jdcoefct.c jdcolor.c jddctmgr.c \
-        jdhuff.c jdinput.c jdmainct.c jdmarker.c jdmaster.c jdmerge.c \
-        jdphuff.c jdpostct.c jdsample.c jdtrans.c jerror.c jfdctflt.c \
+LIBSOURCES = jxrcomapi.c jxrdapimin.c \
+        jdapistd.c jdatadst.c jdatasrc.c jdcoefct.c jdcolor.c \
+        jdinput.c jdmainct.c jdmarker.c jdmaster.c jdmerge.c \
+        jdpostct.c jdsample.c jdtrans.c jerror.c jfdctflt.c \
         jfdctfst.c jfdctint.c jidctflt.c jidctfst.c jidctint.c \
         jidctred.c jquant1.c jquant2.c jutils.c jmemmgr.c @MEMORYMGR@.c
 
@@ -284,7 +283,7 @@ SYSDEPSOURCES = jmemansi.c jmemname.c jmemnobs.c jmemdos.c jmemmac.c
 INSTINCLUDES = jerror.h jmorecfg.h jpegxrlib.h jpegxrlib.h
 
 # Headers which are not installed
-OTHERINCLUDES = cderror.h cdjpeg-xr.h jdct.h jdhuff.h jinclude.h \
+OTHERINCLUDES = cderror.h cdjpeg-xr.h jdct.h jinclude.h \
         jmemsys.h jpegint.h jversion.h transupp.h
 
 
@@ -500,20 +499,16 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/@MEMORYMGR@.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cdjpeg-xr.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/djpeg-xr.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jcmaster.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdapistd.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdatadst.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdatasrc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdcoefct.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdcolor.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jddctmgr.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdhuff.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdinput.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdmainct.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdmarker.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdmaster.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdmerge.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdphuff.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdpostct.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdsample.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdtrans.Plo@am__quote@
