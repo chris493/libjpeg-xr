@@ -8,29 +8,24 @@
 AUTOMAKE_OPTIONS = 1.9 dist-zip dist-bzip2 foreign 
 
 # Sources to build library
-LIBSOURCES = jxrcomapi.c jxrdapimin.c \
-        jdapistd.c jdatadst.c jdatasrc.c jdcoefct.c jdcolor.c \
-        jdinput.c jdmainct.c jdmarker.c jdmaster.c jdmerge.c \
-        jdpostct.c jdsample.c jdtrans.c jerror.c jfdctflt.c \
-        jfdctfst.c jfdctint.c jidctflt.c jidctfst.c jidctint.c \
-        jidctred.c jquant1.c jquant2.c jutils.c jmemmgr.c @MEMORYMGR@.c
+LIBSOURCES = jxrdapi.c jxrparse.c jdatasrc.c jdmaster.c \
+        jdinput.c jdmarker.c jerror.c jutils.c jmemmgr.c @MEMORYMGR@.c
 
 # System dependent sources
 SYSDEPSOURCES = jmemansi.c jmemname.c jmemnobs.c jmemdos.c jmemmac.c
 
 # Headers which are installed to support the library
-INSTINCLUDES  = jerror.h jmorecfg.h jpegxrlib.h jpegxrlib.h
+INSTINCLUDES  = jerror.h jmorecfg.h jpegxrlib.h
 
 # Headers which are not installed
-OTHERINCLUDES = cderror.h cdjpeg-xr.h jdct.h jinclude.h \
-        jmemsys.h jpegint.h jversion.h transupp.h
+OTHERINCLUDES = cderror.h cdjpeg-xr.h jinclude.h \
+        jmemsys.h jpegint.h jversion.h
 
 # Manual pages (Automake uses 'MANS' for itself)
 DISTMANS= djpeg-xr.1
 
 # Other documentation files
-DOCS= README install.doc usage.doc wizard.doc example.c libjpeg.doc \
-	structure.doc coderules.doc filelist.doc
+DOCS= README
 
 # Makefiles for various systems
 MKFILES= configure
@@ -61,7 +56,7 @@ EXTRA_libjpeg_xr_la_SOURCES = $(SYSDEPSOURCES)
 bin_PROGRAMS = djpeg-xr
 
 # Executable sources & libs
-djpeg_xr_SOURCES = djpeg-xr.c wrppm.c wrgif.c wrtarga.c wrrle.c wrbmp.c rdcolmap.c cdjpeg-xr.c 
+djpeg_xr_SOURCES = djpeg-xr.c cdjpeg-xr.c 
 djpeg_xr_LDADD   = libjpeg-xr.la $(PNGLIBS)
 
 # Manual pages to install

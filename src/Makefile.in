@@ -48,9 +48,9 @@ subdir = .
 DIST_COMMON = $(am__configure_deps) $(include_HEADERS) \
 	$(noinst_HEADERS) $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/jconfig.h.in $(srcdir)/jconfig_api.h.in \
-	$(top_srcdir)/configure ansi2knr.1 ansi2knr.c \
-	config/config.guess config/config.sub config/depcomp \
-	config/install-sh config/ltmain.sh config/missing
+	$(top_srcdir)/configure config/config.guess config/config.sub \
+	config/depcomp config/install-sh config/ltmain.sh \
+	config/missing
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
 	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
@@ -89,21 +89,16 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)" \
 	"$(DESTDIR)$(man1dir)" "$(DESTDIR)$(includedir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libjpeg_xr_la_LIBADD =
-am__objects_1 = jxrcomapi.lo jxrdapimin.lo jdapistd.lo jdatadst.lo \
-	jdatasrc.lo jdcoefct.lo jdcolor.lo jdinput.lo jdmainct.lo \
-	jdmarker.lo jdmaster.lo jdmerge.lo jdpostct.lo jdsample.lo \
-	jdtrans.lo jerror.lo jfdctflt.lo jfdctfst.lo jfdctint.lo \
-	jidctflt.lo jidctfst.lo jidctint.lo jidctred.lo jquant1.lo \
-	jquant2.lo jutils.lo jmemmgr.lo @MEMORYMGR@.lo
+am__objects_1 = jxrdapi.lo jxrparse.lo jdatasrc.lo jdmaster.lo \
+	jdinput.lo jdmarker.lo jerror.lo jutils.lo jmemmgr.lo \
+	@MEMORYMGR@.lo
 am_libjpeg_xr_la_OBJECTS = $(am__objects_1)
 libjpeg_xr_la_OBJECTS = $(am_libjpeg_xr_la_OBJECTS)
 libjpeg_xr_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(libjpeg_xr_la_LDFLAGS) $(LDFLAGS) -o $@
 PROGRAMS = $(bin_PROGRAMS)
-am_djpeg_xr_OBJECTS = djpeg-xr.$(OBJEXT) wrppm.$(OBJEXT) \
-	wrgif.$(OBJEXT) wrtarga.$(OBJEXT) wrrle.$(OBJEXT) \
-	wrbmp.$(OBJEXT) rdcolmap.$(OBJEXT) cdjpeg-xr.$(OBJEXT)
+am_djpeg_xr_OBJECTS = djpeg-xr.$(OBJEXT) cdjpeg-xr.$(OBJEXT)
 djpeg_xr_OBJECTS = $(am_djpeg_xr_OBJECTS)
 am__DEPENDENCIES_1 =
 djpeg_xr_DEPENDENCIES = libjpeg-xr.la $(am__DEPENDENCIES_1)
@@ -268,32 +263,26 @@ top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = 1.9 dist-zip dist-bzip2 foreign 
 
 # Sources to build library
-LIBSOURCES = jxrcomapi.c jxrdapimin.c \
-        jdapistd.c jdatadst.c jdatasrc.c jdcoefct.c jdcolor.c \
-        jdinput.c jdmainct.c jdmarker.c jdmaster.c jdmerge.c \
-        jdpostct.c jdsample.c jdtrans.c jerror.c jfdctflt.c \
-        jfdctfst.c jfdctint.c jidctflt.c jidctfst.c jidctint.c \
-        jidctred.c jquant1.c jquant2.c jutils.c jmemmgr.c @MEMORYMGR@.c
+LIBSOURCES = jxrdapi.c jxrparse.c jdatasrc.c jdmaster.c \
+        jdinput.c jdmarker.c jerror.c jutils.c jmemmgr.c @MEMORYMGR@.c
 
 
 # System dependent sources
 SYSDEPSOURCES = jmemansi.c jmemname.c jmemnobs.c jmemdos.c jmemmac.c
 
 # Headers which are installed to support the library
-INSTINCLUDES = jerror.h jmorecfg.h jpegxrlib.h jpegxrlib.h
+INSTINCLUDES = jerror.h jmorecfg.h jpegxrlib.h
 
 # Headers which are not installed
-OTHERINCLUDES = cderror.h cdjpeg-xr.h jdct.h jinclude.h \
-        jmemsys.h jpegint.h jversion.h transupp.h
+OTHERINCLUDES = cderror.h cdjpeg-xr.h jinclude.h \
+        jmemsys.h jpegint.h jversion.h
 
 
 # Manual pages (Automake uses 'MANS' for itself)
 DISTMANS = djpeg-xr.1
 
 # Other documentation files
-DOCS = README install.doc usage.doc wizard.doc example.c libjpeg.doc \
-	structure.doc coderules.doc filelist.doc
-
+DOCS = README
 
 # Makefiles for various systems
 MKFILES = configure
@@ -322,7 +311,7 @@ libjpeg_xr_la_LDFLAGS = -no-undefined \
 EXTRA_libjpeg_xr_la_SOURCES = $(SYSDEPSOURCES)
 
 # Executable sources & libs
-djpeg_xr_SOURCES = djpeg-xr.c wrppm.c wrgif.c wrtarga.c wrrle.c wrbmp.c rdcolmap.c cdjpeg-xr.c 
+djpeg_xr_SOURCES = djpeg-xr.c cdjpeg-xr.c 
 djpeg_xr_LDADD = libjpeg-xr.la $(PNGLIBS)
 
 # Manual pages to install
@@ -499,44 +488,20 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/@MEMORYMGR@.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cdjpeg-xr.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/djpeg-xr.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdapistd.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdatadst.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdatasrc.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdcoefct.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdcolor.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdinput.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdmainct.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdmarker.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdmaster.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdmerge.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdpostct.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdsample.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jdtrans.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jerror.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jfdctflt.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jfdctfst.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jfdctint.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jidctflt.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jidctfst.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jidctint.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jidctred.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jmemansi.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jmemdos.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jmemmac.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jmemmgr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jmemname.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jmemnobs.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jquant1.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jquant2.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jutils.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jxrcomapi.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jxrdapimin.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rdcolmap.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wrbmp.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wrgif.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wrppm.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wrrle.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wrtarga.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jxrdapi.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jxrparse.Plo@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

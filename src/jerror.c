@@ -62,8 +62,8 @@ const char * const jpeg_std_message_table[] = {
  * handler object.  Note that the info needed to generate an error message
  * is stored in the error object, so you can generate the message now or
  * later, at your convenience.
- * You should make sure that the JPEG object is cleaned up (with jpeg_abort
- * or jpeg_destroy) at some point.
+ * You should make sure that the JPEG object is cleaned up (with jpegxr_abort
+ * or jpegxr_destroy) at some point.
  */
 
 METHODDEF(void)
@@ -73,7 +73,7 @@ error_exit (j_common_ptr cinfo)
   (*cinfo->err->output_message) (cinfo);
 
   /* Let the memory manager delete any temp files before we die */
-  jpeg_destroy(cinfo);
+  jpegxr_destroy(cinfo);
 
   exit(EXIT_FAILURE);
 }

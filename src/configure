@@ -572,7 +572,7 @@ PACKAGE_STRING=
 PACKAGE_BUGREPORT=
 PACKAGE_URL=
 
-ac_unique_file="jcmaster.c"
+ac_unique_file="jdmaster.c"
 # Factoring default headers for most tests.
 ac_includes_default="\
 #include <stdio.h>

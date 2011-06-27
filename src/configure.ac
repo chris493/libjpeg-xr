@@ -4,7 +4,7 @@ dnl Process this file with autoconf to produce a configure script.
 # Configure script for IJG libjpeg
 #
 AC_PREREQ(2.59)
-AC_INIT(jcmaster.c)
+AC_INIT(jdmaster.c)
 
 # Specify directory where m4 macros may be found.
 AC_CONFIG_MACRO_DIR([m4])

@@ -160,7 +160,7 @@ skip_input_data (j_decompress_ptr cinfo, long num_bytes)
  * Terminate source --- called by jpeg_finish_decompress
  * after all data has been read.  Often a no-op.
  *
- * NB: *not* called by jpeg_abort or jpeg_destroy; surrounding
+ * NB: *not* called by jpeg_abort or jpegxr_destroy; surrounding
  * application must deal with any cleanup that should happen even
  * for error exit.
  */

@@ -345,8 +345,6 @@ struct jpeg_common_struct {
    */
 };
 
-
-
 typedef struct jpeg_common_struct * j_common_ptr;
 typedef struct jpegxr_decompress_struct * j_decompress_ptr;
 
@@ -364,8 +362,7 @@ struct jpegxr_decompress_struct {
   
   /* Plane headers for image and alpha planes */
   image_plane_header * img_plane_hdr;
-  image_plane_header * alpha_plane_hdr; /* NULL if
-  hdr.alpha_image_plane_flag = false */
+  image_plane_header * alpha_plane_hdr; /* NULL if no alpha plane */
 
   /* Tile index table */
   /* Tiles need not be in order and there may be codestream segments of
@@ -590,8 +587,9 @@ EXTERN(void) jpeg_stdio_src JPP((j_decompress_ptr cinfo, FILE * infile));
 
 
 /* Decompression startup: read start of JPEG datastream to see what's there */
-EXTERN(int) jpeg_read_header JPP((j_decompress_ptr cinfo,
+EXTERN(int) jpegxr_read_header JPP((j_decompress_ptr cinfo,
 				  boolean require_image));
+
           
 /* Return value is one of: */
 #define JPEG_SUSPENDED		0 /* Suspended due to lack of input data */
@@ -610,11 +608,14 @@ EXTERN(int) jpeg_read_header JPP((j_decompress_ptr cinfo,
 #define JPEG_ROW_COMPLETED	3 /* Completed one iMCU row */
 #define JPEG_SCAN_COMPLETED	4 /* Completed last iMCU row of a scan */
 
-/* Generic versions of jpeg_destroy that work on either
+/* Generic versions of jpegxr_destroy that work on either
  * flavor of JPEG object.  These may be more convenient in some places.
  */
-EXTERN(void) jpeg_destroy JPP((j_common_ptr cinfo));
+EXTERN(void) jpegxr_destroy JPP((j_common_ptr cinfo));
 
+/* Default restart-marker-resync procedure for use by data source modules */
+EXTERN(boolean) jpeg_resync_to_restart JPP((j_decompress_ptr cinfo,
+					    int desired));
 
 /*
  * The JPEG library modules define JPEG_INTERNALS before including this file.

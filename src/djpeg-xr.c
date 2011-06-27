@@ -28,15 +28,6 @@
 
 #include <ctype.h>		/* to declare isprint() */
 
-#ifdef USE_CCOMMAND		/* command-line reader for Macintosh */
-#ifdef __MWERKS__
-#include <SIOUX.h>              /* Metrowerks needs this */
-#include <console.h>		/* ... and this */
-#endif
-#ifdef THINK_C
-#include <console.h>		/* Think declares it here */
-#endif
-#endif
 
 
 /* Create the add-on message string table. */
@@ -129,6 +120,8 @@ usage (void)
 	  (DEFAULT_FMT == FMT_TARGA ? " (default)" : ""));
 #endif
   fprintf(stderr, "Switches for advanced users:\n");
+  
+/*  
 #ifdef DCT_ISLOW_SUPPORTED
   fprintf(stderr, "  -dct int       Use integer DCT method%s\n",
 	  (JDCT_DEFAULT == JDCT_ISLOW ? " (default)" : ""));
@@ -141,6 +134,8 @@ usage (void)
   fprintf(stderr, "  -dct float     Use floating-point DCT method%s\n",
 	  (JDCT_DEFAULT == JDCT_FLOAT ? " (default)" : ""));
 #endif
+*/
+
   fprintf(stderr, "  -dither fs     Use F-S dithering (default)\n");
   fprintf(stderr, "  -dither none   Don't use dithering in quantization\n");
   fprintf(stderr, "  -dither ordered  Use ordered dither (medium speed, quality)\n");
@@ -196,113 +191,9 @@ parse_switches (j_decompress_ptr cinfo, int argc, char **argv,
       /* BMP output format. */
       requested_fmt = FMT_BMP;
 
-    } else if (keymatch(arg, "colors", 1) || keymatch(arg, "colours", 1) ||
-	       keymatch(arg, "quantize", 1) || keymatch(arg, "quantise", 1)) {
-      /* Do color quantization. */
-      int val;
-
-      if (++argn >= argc)	/* advance to next argument */
-	usage();
-      if (sscanf(argv[argn], "%d", &val) != 1)
-	usage();
-      cinfo->desired_number_of_colors = val;
-      cinfo->quantize_colors = TRUE;
-
-    } else if (keymatch(arg, "dct", 2)) {
-      /* Select IDCT algorithm. */
-      if (++argn >= argc)	/* advance to next argument */
-	usage();
-      if (keymatch(argv[argn], "int", 1)) {
-	cinfo->dct_method = JDCT_ISLOW;
-      } else if (keymatch(argv[argn], "fast", 2)) {
-	cinfo->dct_method = JDCT_IFAST;
-      } else if (keymatch(argv[argn], "float", 2)) {
-	cinfo->dct_method = JDCT_FLOAT;
-      } else
-	usage();
-
-    } else if (keymatch(arg, "dither", 2)) {
-      /* Select dithering algorithm. */
-      if (++argn >= argc)	/* advance to next argument */
-	usage();
-      if (keymatch(argv[argn], "fs", 2)) {
-	cinfo->dither_mode = JDITHER_FS;
-      } else if (keymatch(argv[argn], "none", 2)) {
-	cinfo->dither_mode = JDITHER_NONE;
-      } else if (keymatch(argv[argn], "ordered", 2)) {
-	cinfo->dither_mode = JDITHER_ORDERED;
-      } else
-	usage();
-
-    } else if (keymatch(arg, "debug", 1) || keymatch(arg, "verbose", 1)) {
-      /* Enable debug printouts. */
-      /* On first -d, print version identification */
-      static boolean printed_version = FALSE;
-
-      if (! printed_version) {
-	fprintf(stderr, "Mozilla DJPEG-XR, version %s\n%s\n",
-		JVERSION, JCOPYRIGHT);
-	printed_version = TRUE;
-      }
-      cinfo->err->trace_level++;
-
-    } else if (keymatch(arg, "fast", 1)) {
-      /* Select recommended processing options for quick-and-dirty output. */
-      cinfo->two_pass_quantize = FALSE;
-      cinfo->dither_mode = JDITHER_ORDERED;
-      if (! cinfo->quantize_colors) /* don't override an earlier -colors */
-	cinfo->desired_number_of_colors = 216;
-      cinfo->dct_method = JDCT_FASTEST;
-      cinfo->do_fancy_upsampling = FALSE;
-
     } else if (keymatch(arg, "gif", 1)) {
       /* GIF output format. */
       requested_fmt = FMT_GIF;
-
-    } else if (keymatch(arg, "grayscale", 2) || keymatch(arg, "greyscale",2)) {
-      /* Force monochrome output. */
-      cinfo->out_color_space = JCS_GRAYSCALE;
-
-    } else if (keymatch(arg, "map", 3)) {
-      /* Quantize to a color map taken from an input file. */
-      if (++argn >= argc)	/* advance to next argument */
-	usage();
-      if (for_real) {		/* too expensive to do twice! */
-#ifdef QUANT_2PASS_SUPPORTED	/* otherwise can't quantize to supplied map */
-	FILE * mapfile;
-
-	if ((mapfile = fopen(argv[argn], READ_BINARY)) == NULL) {
-	  fprintf(stderr, "%s: can't open %s\n", progname, argv[argn]);
-	  exit(EXIT_FAILURE);
-	}
-	read_color_map(cinfo, mapfile);
-	fclose(mapfile);
-	cinfo->quantize_colors = TRUE;
-#else
-	ERREXIT(cinfo, JERR_NOT_COMPILED);
-#endif
-      }
-
-    } else if (keymatch(arg, "maxmemory", 3)) {
-      /* Maximum memory in Kb (or Mb with 'm'). */
-      long lval;
-      char ch = 'x';
-
-      if (++argn >= argc)	/* advance to next argument */
-	usage();
-      if (sscanf(argv[argn], "%ld%c", &lval, &ch) < 1)
-	usage();
-      if (ch == 'm' || ch == 'M')
-	lval *= 1000L;
-      cinfo->mem->max_memory_to_use = lval * 1000L;
-
-    } else if (keymatch(arg, "nosmooth", 3)) {
-      /* Suppress fancy upsampling */
-      cinfo->do_fancy_upsampling = FALSE;
-
-    } else if (keymatch(arg, "onepass", 3)) {
-      /* Use fast one-pass quantization. */
-      cinfo->two_pass_quantize = FALSE;
 
     } else if (keymatch(arg, "os2", 3)) {
       /* BMP output format (OS/2 flavor). */
@@ -321,14 +212,6 @@ parse_switches (j_decompress_ptr cinfo, int argc, char **argv,
     } else if (keymatch(arg, "rle", 1)) {
       /* RLE output format. */
       requested_fmt = FMT_RLE;
-
-    } else if (keymatch(arg, "scale", 1)) {
-      /* Scale the output image by a fraction M/N. */
-      if (++argn >= argc)	/* advance to next argument */
-	usage();
-      if (sscanf(argv[argn], "%d/%d",
-		 &cinfo->scale_num, &cinfo->scale_denom) != 2)
-	usage();
 
     } else if (keymatch(arg, "targa", 1)) {
       /* Targa output format. */
@@ -389,7 +272,6 @@ main (int argc, char **argv)
    * (Exception: tracing level set here controls verbosity for COM markers
    * found during jpeg_read_header...)
    */
-
   file_index = parse_switches(&cinfo, argc, argv, 0, FALSE);
 
 #ifdef TWO_FILE_COMMANDLINE
