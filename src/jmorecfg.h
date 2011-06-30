@@ -150,6 +150,7 @@ typedef unsigned int UINT16;
 #endif /* HAVE_UNSIGNED_SHORT */
 
 
+/* TODO - more system independent definitions */
 /* UINT32 must hold at least the values 0..(2^32 -1) */
 typedef unsigned long UINT32;
 /* UINT64 must hold at least the values 0..(2^64 -1) */
@@ -227,7 +228,7 @@ typedef unsigned int JDIMENSION;
  * On a few systems, type boolean and/or its values FALSE, TRUE may appear
  * in standard header files.  Or you may have conflicts with application-
  * specific header files that you want to include together with these files.
- * Defining HAVE_BOOLEAN before including jpeglib.h should make it work.
+ * Defining HAVE_BOOLEAN before including jpegxrlib.h should make it work.
  */
 
 #ifndef HAVE_BOOLEAN

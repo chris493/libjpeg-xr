@@ -51,7 +51,7 @@
 
 #define JPEG_INTERNALS
 #include "jinclude.h"
-#include "jpeglib.h"
+#include "jpegxrlib.h"
 #include "jmemsys.h"    /* import the system-dependent declarations */
 
 #ifndef USE_MAC_MEMMGR	/* make sure user got configuration right */

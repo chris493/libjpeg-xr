@@ -326,8 +326,11 @@ main (int argc, char **argv)
 
   /* Specify data source for decompression */
   jpeg_stdio_src(&cinfo, input_file);
-
-  /* Read file header, set default decompression parameters */
+  
+  /* Read file header */
+  (void) jpegxr_read_file(&cinfo);
+  
+  /* Read image header */
   (void) jpegxr_read_header(&cinfo, TRUE);
 
 

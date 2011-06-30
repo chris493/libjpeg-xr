@@ -59,7 +59,9 @@ jpegxr_CreateDecompress (j_decompress_ptr cinfo, int version, size_t structsize)
   cinfo->progress = NULL;
   cinfo->src = NULL;
   
-  /* This will do for now. TODO - do this properly */
+  /* For now we keep records of the header with the decompression object.
+   * These must be allocated. */
+  cinfo->file_hdr = NULL;
   cinfo->hdr = NULL;
   cinfo->img_plane_hdr = NULL;
   cinfo->alpha_plane_hdr = NULL;
@@ -70,10 +72,48 @@ jpegxr_CreateDecompress (j_decompress_ptr cinfo, int version, size_t structsize)
 }
 
 
+/*
+ * Read the start of a JPEG-XR file to obtain codestream details.
+ *
+ */
+GLOBAL(int)
+jpegxr_read_file (j_decompress_ptr cinfo)
+{
+  int retcode;
+
+  /* Check we are in the correct state. TODO - do we need inheader state? */
+  if (cinfo->global_state != DSTATE_START &&
+      cinfo->global_state != DSTATE_INHEADER)
+    ERREXIT1(cinfo, JERR_BAD_STATE, cinfo->global_state);
+
+  /* For now just parse image and tile layer */
+  retcode = jpegxr_parse_file_header(cinfo);
+
+
+  /* TODO - what new return codes are needed? */
+  switch (retcode) {
+  case JPEG_REACHED_SOS:
+    retcode = JPEG_HEADER_OK;
+    break;
+  case JPEG_REACHED_EOI:
+    /* Reset to start state; it would be safer to require the application to
+     * call jpeg_abort, but we can't change it now for compatibility reasons.
+     * A side effect is to free any temporary memory (there shouldn't be any).
+     */
+    //jpeg_abort((j_common_ptr) cinfo); /* sets state = DSTATE_START */
+    retcode = JPEG_HEADER_TABLES_ONLY;
+    break;
+  case JPEG_SUSPENDED:
+    /* no work */
+    break;
+  }
+
+  return retcode;
+}
 
 /*
- * Decompression startup: read start of JPEG datastream to see what's
- * there. Need only initialize JPEG object and supply a data source
+ * Read start of JPEG-XR codestream to obtain decompression parameteres.
+ * Need only initialize JPEG object and supply a data source
  * before calling. This simply wraps parsing calls with some additional
  * error management.
  *
@@ -83,7 +123,7 @@ jpegxr_read_header (j_decompress_ptr cinfo, boolean require_image)
 {
   int retcode;
 
-  /* Check we are in the correct state. TODO - do we need in header state? */
+  /* Check we are in the correct state. TODO - do we need inheader state? */
   if (cinfo->global_state != DSTATE_START &&
       cinfo->global_state != DSTATE_INHEADER)
     ERREXIT1(cinfo, JERR_BAD_STATE, cinfo->global_state);
@@ -100,6 +140,7 @@ jpegxr_read_header (j_decompress_ptr cinfo, boolean require_image)
   case JPEG_REACHED_EOI:
     if (require_image)		/* Complain if application wanted an image */
       ERREXIT(cinfo, JERR_NO_IMAGE);
+      /* Do we need an equivalent of require image? */
     /* Reset to start state; it would be safer to require the application to
      * call jpeg_abort, but we can't change it now for compatibility reasons.
      * A side effect is to free any temporary memory (there shouldn't be any).

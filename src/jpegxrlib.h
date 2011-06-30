@@ -32,6 +32,32 @@
 #define JPEGXR_LIB_VERSION  11	/* Version 1a */
 
 
+/* TODO - remove these */
+/* Various constants determining the sizes of things.
+ * All of these are specified by the JPEG standard, so don't change them
+ * if you want to be compatible.
+ */
+
+#define DCTSIZE		    8	/* The basic DCT block is 8x8 samples */
+#define DCTSIZE2	    64	/* DCTSIZE squared; # of elements in a block */
+#define NUM_QUANT_TBLS      4	/* Quantization tables are numbered 0..3 */
+#define NUM_HUFF_TBLS       4	/* Huffman tables are numbered 0..3 */
+#define NUM_ARITH_TBLS      16	/* Arith-coding tables are numbered 0..15 */
+#define MAX_COMPS_IN_SCAN   4	/* JPEG limit on # of components in one scan */
+#define MAX_SAMP_FACTOR     4	/* JPEG limit on sampling factors */
+/* Unfortunately, some bozo at Adobe saw no reason to be bound by the standard;
+ * the PostScript DCT filter can emit files with many more than 10 blocks/MCU.
+ * If you happen to run across such a file, you can up D_MAX_BLOCKS_IN_MCU
+ * to handle it.  We even let you do this from the jconfig.h file.  However,
+ * we strongly discourage changing C_MAX_BLOCKS_IN_MCU; just because Adobe
+ * sometimes emits noncompliant files doesn't mean you should too.
+ */
+#define C_MAX_BLOCKS_IN_MCU   10 /* compressor's limit on blocks per MCU */
+#ifndef D_MAX_BLOCKS_IN_MCU
+#define D_MAX_BLOCKS_IN_MCU   10 /* decompressor's limit on blocks per MCU */
+#endif
+
+
 /* Data structures for images (arrays of samples and of DCT coefficients).
  * On 80x86 machines, the image arrays are too big for near pointers,
  * but the pointer arrays can fit in near memory.
@@ -50,7 +76,39 @@ typedef JCOEF FAR *JCOEFPTR;	/* useful in a couple of places */
 
 
 
-/* Types for JPEG-XR header information */
+/* Types for JPEG-XR file and codestream headers */
+
+
+/* File header */
+typedef struct {
+    UINT16 fixed_file_header_ii_2bytes;
+    UINT8 fixed_file_header_0xbc_byte;
+    UINT8 file_version_id;
+    /* Position of first image file directory, from start of file. */
+    UINT32 first_ifd_offset;
+} file_header;
+
+/* Image file directory entry */
+typedef struct {
+    UINT16 field_tag;
+    UINT16 element_type;
+    UINT32 num_elements;
+    UINT32 values_or_offset;
+} ifd_entry;
+
+/* Image file directory */
+typedef struct {
+  /* Number of images in the directory */
+  /* Currently we only support ONE entry. */
+  UINT16 num_entries;
+  /* Pointer to head of list of ifd entries */
+  ifd_entry * ifd_entry_list;
+  /* Next directory, or zero if none. */
+  /* Currently we do not support further directories. */
+  UINT32 zero_or_next_ifd_offset;
+} image_file_directory;
+
+
 
 /* Spatial transform fill */
 /* Indicates the location of the [0][0] image sample coordinate position
@@ -357,6 +415,15 @@ struct jpegxr_decompress_struct {
   /* Source of compressed data */
   struct jpeg_source_mgr * src;
   
+  /* File headers, if codestream loaded from file */
+  /* Currently these are treated as additional headers. This will need
+   * to be modified when support for multiple images and multiple
+   * directories of images is added. Currently we have one directory
+   * with one image entry.*/
+  file_header * file_hdr;
+  image_file_directory * file_dir;
+  
+  
   /* Image header */
   image_header * hdr;
   
@@ -585,8 +652,10 @@ EXTERN(void) jpegxr_destroy_decompress JPP((j_decompress_ptr cinfo));
 /* Caller is responsible for opening the file before and closing after. */
 EXTERN(void) jpeg_stdio_src JPP((j_decompress_ptr cinfo, FILE * infile));
 
+/* Read start of JPEG-XR file to obtain codestream details.  */
+EXTERN(int) jpegxr_read_file JPP((j_decompress_ptr cinfo));
 
-/* Decompression startup: read start of JPEG datastream to see what's there */
+/* Read start of JPEG-XR codestream to obtain decompression parameters. */
 EXTERN(int) jpegxr_read_header JPP((j_decompress_ptr cinfo,
 				  boolean require_image));
 
@@ -616,6 +685,15 @@ EXTERN(void) jpegxr_destroy JPP((j_common_ptr cinfo));
 /* Default restart-marker-resync procedure for use by data source modules */
 EXTERN(boolean) jpeg_resync_to_restart JPP((j_decompress_ptr cinfo,
 					    int desired));
+              
+/* These marker codes are exported since applications and data source modules
+ * are likely to want to use them.
+ */
+
+#define JPEG_RST0	0xD0	/* RST0 marker code */
+#define JPEG_EOI	0xD9	/* EOI marker code */
+#define JPEG_APP0	0xE0	/* APP0 marker code */
+#define JPEG_COM	0xFE	/* COM marker code */
 
 /*
  * The JPEG library modules define JPEG_INTERNALS before including this file.
