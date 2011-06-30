@@ -37,7 +37,6 @@
  * All of these are specified by the JPEG standard, so don't change them
  * if you want to be compatible.
  */
-
 #define DCTSIZE		    8	/* The basic DCT block is 8x8 samples */
 #define DCTSIZE2	    64	/* DCTSIZE squared; # of elements in a block */
 #define NUM_QUANT_TBLS      4	/* Quantization tables are numbered 0..3 */
@@ -58,11 +57,12 @@
 #endif
 
 
+
 /* Data structures for images (arrays of samples and of DCT coefficients).
  * On 80x86 machines, the image arrays are too big for near pointers,
  * but the pointer arrays can fit in near memory.
+ * TODO - rewrite these for JPEG-XR.
  */
-
 typedef JSAMPLE FAR *JSAMPROW;	/* ptr to one image row of pixel samples. */
 typedef JSAMPROW *JSAMPARRAY;	/* ptr to some rows (a 2-D sample array) */
 typedef JSAMPARRAY *JSAMPIMAGE;	/* a 3-D sample array: top index is color */
@@ -76,39 +76,44 @@ typedef JCOEF FAR *JCOEFPTR;	/* useful in a couple of places */
 
 
 
-/* Types for JPEG-XR file and codestream headers */
+/* Common fields between JPEG-XR objects */
+/* These are shared between file, directory and codestream objects. A
+ * file contains mutliple directories, each of which may contain
+ * multiple codestreams. A codestream or directory can also be decoded
+ * in isolation. All objects therefore share these fields and share
+ * instances with their child objects.
+ */
+#define jpegxr_common_fields \
+  struct jpeg_error_mgr * err;	      /* Error handler module */\
+  struct jpeg_memory_mgr * mem;	      /* Memory manager module */\
+  struct jpeg_progress_mgr * progress;/* Progress monitor, or NULL if none */\
+  struct jpeg_source_mgr * src;       /* Source of compressed data */\
+  void * client_data;		              /* Available for use by application */\
+  int global_state		                /* For checking call sequence validity */
+  
+
+/* Routines that are to be used by decompression common to files,
+ * directories and image are declared to receive a pointer to this
+ * structure.  There are no actual instances of jpeg_common_struct, only
+ * of jpegxr_image_struct, jpegxr_dir_struct,
+ * jpegxr_file_struct.
+ */
+struct jpegxr_common_struct {
+	jpegxr_common_fields;		/* Fields common to all master struct types */
+	/* Additional fields follow in an actual structs: jpegxr_image_struct,
+   * jpegxr_dir_struct, jpegxr_file_struct. All three structs must agree
+   * on these initial fields (this would be a lot cleaner in C++).
+	*/
+};
+
+typedef struct jpegxr_common_struct * j_common_ptr;
+/* It is safe to cast these to j_common_ptr */
+typedef struct jpegxr_image_struct * j_image_ptr;
+typedef struct jpegxr_dir_struct * j_dir_ptr;
+typedef struct jpegxr_file_struct * j_file_ptr;
 
 
-/* File header */
-typedef struct {
-    UINT16 fixed_file_header_ii_2bytes;
-    UINT8 fixed_file_header_0xbc_byte;
-    UINT8 file_version_id;
-    /* Position of first image file directory, from start of file. */
-    UINT32 first_ifd_offset;
-} file_header;
-
-/* Image file directory entry */
-typedef struct {
-    UINT16 field_tag;
-    UINT16 element_type;
-    UINT32 num_elements;
-    UINT32 values_or_offset;
-} ifd_entry;
-
-/* Image file directory */
-typedef struct {
-  /* Number of images in the directory */
-  /* Currently we only support ONE entry. */
-  UINT16 num_entries;
-  /* Pointer to head of list of ifd entries */
-  ifd_entry * ifd_entry_list;
-  /* Next directory, or zero if none. */
-  /* Currently we do not support further directories. */
-  UINT32 zero_or_next_ifd_offset;
-} image_file_directory;
-
-
+/* Data types for JPEG-XR coded image instances */
 
 /* Spatial transform fill */
 /* Indicates the location of the [0][0] image sample coordinate position
@@ -245,8 +250,6 @@ typedef struct {
     
 } image_header;
 
-
-
 /* Internal color formats. */
 typedef enum {
       JINTCOL_YONLY, 		/* Luninance only */
@@ -364,8 +367,6 @@ typedef struct {
 
 } image_plane_header;
 
-
-
 /* Title index table */
 typedef struct {
 
@@ -379,50 +380,12 @@ typedef struct {
 
 } index_table_tiles;
 
+/* Master record for a JPEG-XR coded image decompression instance */
+struct jpegxr_image_struct {
+  jpegxr_common_fields;		/* Fields shared with jpegxr_compress_struct */
 
-
-/* Common fields between JPEG compression and decompression master structs. */
-#define jpeg_common_fields \
-  struct jpeg_error_mgr * err;	/* Error handler module */\
-  struct jpeg_memory_mgr * mem;	/* Memory manager module */\
-  struct jpeg_progress_mgr * progress; /* Progress monitor, or NULL if none */\
-  void * client_data;		/* Available for use by application */\
-  boolean is_decompressor;	/* So common code can tell which is which */\
-  int global_state		/* For checking call sequence validity */
-
-/* Routines that are to be used by decompression and compression
- * (currently not implemented)  halves of the library are declared to
- * receive a pointer to this structure.  There are no actual instances
- * of jpeg_common_struct, only of jpegxr_decompress_struct.
- */
-struct jpeg_common_struct {
-  jpeg_common_fields;		/* Fields common to both master struct types */
-  /* Additional fields follow in an actual jpegxr_decompress_struct.
-   * All three structs must agree on these initial fields!  (This would
-   * be a lot cleaner in C++.)
-   */
-};
-
-typedef struct jpeg_common_struct * j_common_ptr;
-typedef struct jpegxr_decompress_struct * j_decompress_ptr;
-
-
-
-/* Master record for a JPEG-XR decompression instance */
-struct jpegxr_decompress_struct {
-  jpeg_common_fields;		/* Fields shared with jpegxr_compress_struct */
-
-  /* Source of compressed data */
-  struct jpeg_source_mgr * src;
-  
-  /* File headers, if codestream loaded from file */
-  /* Currently these are treated as additional headers. This will need
-   * to be modified when support for multiple images and multiple
-   * directories of images is added. Currently we have one directory
-   * with one image entry.*/
-  file_header * file_hdr;
-  image_file_directory * file_dir;
-  
+  /* Start of instance in data source */
+  unsigned int offset;
   
   /* Image header */
   image_header * hdr;
@@ -453,6 +416,79 @@ struct jpegxr_decompress_struct {
 
 
 
+/* Data types for JPEG-XR directory instances */
+
+/* Image file directory entry */
+typedef struct {
+    UINT16 field_tag;
+    UINT16 element_type;
+    UINT32 num_elements;
+    UINT32 values_or_offset;
+} ifd_entry;
+
+/* Image file directory header */
+typedef struct {
+
+} image_file_directory;
+
+/* Master record for a JPEG-XR directory decompression instance */
+struct jpegxr_dir_struct {
+  jpegxr_common_fields;		/* Fields shared with jpegxr_compress_struct */
+  
+  /* Start of instance in data source */
+  unsigned int offset;
+  
+  /* Number of entries in the directory */
+  UINT16 num_entries;
+  /* Pointer to head of list of ifd entries */
+  /* Currently there must be exactly 5. */
+  ifd_entry * ifd_entry_list[5];
+  
+  /* Required entry values */
+  /* Currently these are the only entries supported. All directories
+   * must contain at least these entries. TODO - 1) Intepret pixel
+   * format. 2) Add support for optional entries. */
+  UINT8 pixel_format[16];
+  UINT32 image_width; 
+  UINT32 image_height;
+  UINT32 image_offset; // where the coded image appears
+  UINT32 image_byte_count; // length of coded image
+  
+  /* Coded image instances */
+  /* Currently we only support one per directory, but there could be at
+   * least an alpha image also. */
+  j_image_ptr * image;
+  //j_decompress_ptr * alpha_image;
+  
+  /* Next directory in codestream, or zero if none. */
+  UINT32 zero_or_next_ifd_offset;
+  
+};
+
+
+
+/* Data types for JPEG-XR file instances */
+
+/* Master record for a JPEG-XR file decompression instance */
+struct jpegxr_file_struct {
+  jpegxr_common_fields;	/* Fields shared with jpegxr_compress_struct */
+  
+  /* File header */
+  UINT16 fixed_file_header_ii_2bytes;
+  UINT8 fixed_file_header_0xbc_byte;
+  UINT8 file_version_id;
+  /* Position of first image file directory, from start of file. */
+  UINT32 first_ifd_offset;
+
+  /* Image file directories */
+  unsigned int num_dirs;
+  j_dir_ptr dirs[];
+  
+};
+
+
+
+
 /* "Object" declarations for JPEG modules that may be supplied or called
  * directly by the surrounding application.
  * As with all objects in the JPEG library, these structs only define the
@@ -460,9 +496,7 @@ struct jpegxr_decompress_struct {
  * private fields may exist after the public ones.
  */
 
-
 /* Error handler object */
-
 struct jpeg_error_mgr {
   /* Error exit handler: does not return to caller */
   JMETHOD(void, error_exit, (j_common_ptr cinfo));
@@ -518,9 +552,7 @@ struct jpeg_error_mgr {
   int last_addon_message;	/* code for last string in addon table */
 };
 
-
 /* Progress monitor object */
-
 struct jpeg_progress_mgr {
   JMETHOD(void, progress_monitor, (j_common_ptr cinfo));
 
@@ -530,18 +562,16 @@ struct jpeg_progress_mgr {
   int total_passes;		/* total number of passes expected */
 };
 
-
 /* Data source object for decompression */
-
 struct jpeg_source_mgr {
   const JOCTET * next_input_byte; /* => next byte to read from buffer */
   size_t bytes_in_buffer;	/* # of bytes remaining in buffer */
 
-  JMETHOD(void, init_source, (j_decompress_ptr cinfo));
-  JMETHOD(boolean, fill_input_buffer, (j_decompress_ptr cinfo));
-  JMETHOD(void, skip_input_data, (j_decompress_ptr cinfo, long num_bytes));
-  JMETHOD(boolean, resync_to_restart, (j_decompress_ptr cinfo, int desired));
-  JMETHOD(void, term_source, (j_decompress_ptr cinfo));
+  JMETHOD(void, init_source, (j_common_ptr cinfo));
+  JMETHOD(boolean, fill_input_buffer, (j_common_ptr cinfo));
+  JMETHOD(void, skip_input_data, (j_common_ptr cinfo, long num_bytes));
+  JMETHOD(boolean, resync_to_restart, (j_common_ptr cinfo, int desired));
+  JMETHOD(void, term_source, (j_common_ptr cinfo));
 };
 
 
@@ -562,7 +592,6 @@ struct jpeg_source_mgr {
 
 typedef struct jvirt_sarray_control * jvirt_sarray_ptr;
 typedef struct jvirt_barray_control * jvirt_barray_ptr;
-
 
 struct jpeg_memory_mgr {
   /* Method pointers */
@@ -637,27 +666,25 @@ EXTERN(struct jpeg_error_mgr *) jpeg_std_error
  * passed for version mismatch checking.
  * NB: you must set up the error-manager BEFORE calling jpeg_create_xxx.
  */
-#define jpegxr_create_decompress(cinfo) \
-    jpegxr_CreateDecompress((cinfo), JPEGXR_LIB_VERSION, \
-			  (size_t) sizeof(struct jpegxr_decompress_struct))
-EXTERN(void) jpegxr_CreateDecompress JPP((j_decompress_ptr cinfo,
+#define jpegxr_file_create_decompress(cinfo) \
+    jpegxr_file_CreateDecompress((cinfo), JPEGXR_LIB_VERSION, \
+			  (size_t) sizeof(struct jpegxr_file_struct))
+EXTERN(void) jpegxr_file_CreateDecompress JPP((j_file_ptr cinfo,
 					int version, size_t structsize));
-          
-
-/* Destruction of JPEG compression objects */
-EXTERN(void) jpegxr_destroy_decompress JPP((j_decompress_ptr cinfo));
-
 
 /* Standard data source manager: stdio streams. */
 /* Caller is responsible for opening the file before and closing after. */
-EXTERN(void) jpeg_stdio_src JPP((j_decompress_ptr cinfo, FILE * infile));
+EXTERN(void) jpeg_stdio_src JPP((j_common_ptr cinfo, FILE * infile));
 
-/* Read start of JPEG-XR file to obtain codestream details.  */
-EXTERN(int) jpegxr_read_file JPP((j_decompress_ptr cinfo));
 
 /* Read start of JPEG-XR codestream to obtain decompression parameters. */
-EXTERN(int) jpegxr_read_header JPP((j_decompress_ptr cinfo,
-				  boolean require_image));
+EXTERN(int) jpegxr_file_read_header JPP((j_file_ptr cinfo));
+
+
+/* Destroy JPEG-XR file object. */
+EXTERN(void) jpegxr_file_destroy JPP((j_file_ptr cinfo));
+/* Generic version */
+EXTERN(void) jpegxr_destroy JPP((j_common_ptr cinfo));
 
           
 /* Return value is one of: */
@@ -677,14 +704,11 @@ EXTERN(int) jpegxr_read_header JPP((j_decompress_ptr cinfo,
 #define JPEG_ROW_COMPLETED	3 /* Completed one iMCU row */
 #define JPEG_SCAN_COMPLETED	4 /* Completed last iMCU row of a scan */
 
-/* Generic versions of jpegxr_destroy that work on either
- * flavor of JPEG object.  These may be more convenient in some places.
- */
-EXTERN(void) jpegxr_destroy JPP((j_common_ptr cinfo));
+
 
 /* Default restart-marker-resync procedure for use by data source modules */
-EXTERN(boolean) jpeg_resync_to_restart JPP((j_decompress_ptr cinfo,
-					    int desired));
+//EXTERN(boolean) jpeg_resync_to_restart JPP((j_common_ptr cinfo,
+//					    int desired));
               
 /* These marker codes are exported since applications and data source modules
  * are likely to want to use them.

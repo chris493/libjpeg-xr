@@ -154,7 +154,7 @@ usage (void)
 
 
 LOCAL(int)
-parse_switches (j_decompress_ptr cinfo, int argc, char **argv,
+parse_switches (j_file_ptr cinfo, int argc, char **argv,
 		int last_file_arg_seen, boolean for_real)
 /* Parse optional switches.
  * Returns argv[] index of first file-name argument (== argc if none).
@@ -233,7 +233,7 @@ parse_switches (j_decompress_ptr cinfo, int argc, char **argv,
 int
 main (int argc, char **argv)
 {
-  struct jpegxr_decompress_struct cinfo;
+  struct jpegxr_file_struct cinfo;
   struct jpeg_error_mgr jerr;
 #ifdef PROGRESS_REPORT
   struct cdjpeg_progress_mgr progress;
@@ -252,9 +252,10 @@ main (int argc, char **argv)
   if (progname == NULL || progname[0] == 0)
     progname = "djpeg-xr";		/* in case C library doesn't provide it */
 
-  /* Initialize the JPEG decompression object with default error handling. */
+  /* Initialize the JPEG-XR file decompression object with default error
+   * handling. */
   cinfo.err = jpeg_std_error(&jerr);
-  jpegxr_create_decompress(&cinfo);
+  jpegxr_file_create_decompress(&cinfo);
   /* Add some application-specific error messages (from cderror.h) */
   jerr.addon_message_table = cdjpeg_message_table;
   jerr.first_addon_message = JMSG_FIRSTADDONCODE;
@@ -325,21 +326,16 @@ main (int argc, char **argv)
 #endif
 
   /* Specify data source for decompression */
-  jpeg_stdio_src(&cinfo, input_file);
+  jpeg_stdio_src((j_common_ptr) &cinfo, input_file);
   
   /* Read file header */
-  (void) jpegxr_read_file(&cinfo);
-  
-  /* Read image header */
-  (void) jpegxr_read_header(&cinfo, TRUE);
-
+  (void) jpegxr_file_read_header(&cinfo);
 
 	/* Verify header was read succesfully */
-	fprintf(stdout, "Dummy djpeg-xr called.\n");
-
+	fprintf(stdout, "djpeg-xr called.\n");
 
   /* Abort decompression and release memory. */
-  jpegxr_destroy_decompress(&cinfo);
+  jpegxr_file_destroy(&cinfo);
 
   /* Close files, if we opened them */
   if (input_file != stdin)

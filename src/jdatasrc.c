@@ -41,7 +41,7 @@ typedef my_source_mgr * my_src_ptr;
  */
 
 METHODDEF(void)
-init_source (j_decompress_ptr cinfo)
+init_source (j_common_ptr cinfo)
 {
   my_src_ptr src = (my_src_ptr) cinfo->src;
 
@@ -87,7 +87,7 @@ init_source (j_decompress_ptr cinfo)
  */
 
 METHODDEF(boolean)
-fill_input_buffer (j_decompress_ptr cinfo)
+fill_input_buffer (j_common_ptr cinfo)
 {
   my_src_ptr src = (my_src_ptr) cinfo->src;
   size_t nbytes;
@@ -125,7 +125,7 @@ fill_input_buffer (j_decompress_ptr cinfo)
  */
 
 METHODDEF(void)
-skip_input_data (j_decompress_ptr cinfo, long num_bytes)
+skip_input_data (j_common_ptr cinfo, long num_bytes)
 {
   my_src_ptr src = (my_src_ptr) cinfo->src;
 
@@ -166,7 +166,7 @@ skip_input_data (j_decompress_ptr cinfo, long num_bytes)
  */
 
 METHODDEF(void)
-term_source (j_decompress_ptr cinfo)
+term_source (j_common_ptr cinfo)
 {
   /* no work necessary here */
 }
@@ -179,7 +179,7 @@ term_source (j_decompress_ptr cinfo)
  */
 
 GLOBAL(void)
-jpeg_stdio_src (j_decompress_ptr cinfo, FILE * infile)
+jpeg_stdio_src (j_common_ptr cinfo, FILE * infile)
 {
   my_src_ptr src;
 
@@ -204,7 +204,7 @@ jpeg_stdio_src (j_decompress_ptr cinfo, FILE * infile)
   src->pub.init_source = init_source;
   src->pub.fill_input_buffer = fill_input_buffer;
   src->pub.skip_input_data = skip_input_data;
-  src->pub.resync_to_restart = jpeg_resync_to_restart; /* use default method */
+  src->pub.resync_to_restart = NULL; // TODO - will need a default method if input suspension is supported.
   src->pub.term_source = term_source;
   src->infile = infile;
   src->pub.bytes_in_buffer = 0; /* forces fill_input_buffer on first read */

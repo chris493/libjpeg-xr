@@ -8,7 +8,7 @@
 AUTOMAKE_OPTIONS = 1.9 dist-zip dist-bzip2 foreign 
 
 # Sources to build library
-LIBSOURCES = 	jxrdapi.c jxrparse.c jdatasrc.c jdmaster.c jdmarker.c \
+LIBSOURCES = 	jxrdapi.c jxrparse.c jdatasrc.c jdmaster.c \
 							jerror.c jutils.c jmemmgr.c @MEMORYMGR@.c
 
 # System dependent sources

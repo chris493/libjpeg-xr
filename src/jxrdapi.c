@@ -17,25 +17,23 @@
 #include "jinclude.h"
 #include "jpegxrlib.h"
 
-/* Parsing functions defined in jxrparse.c */
-EXTERN(int) jpegxr_parse_image_tile_layer JPP((j_decompress_ptr cinfo));
 
 /*
  * Initialization of a JPEG decompression object.
  * The error manager must already be set up (in case memory manager fails).
  */
 GLOBAL(void)
-jpegxr_CreateDecompress (j_decompress_ptr cinfo, int version, size_t structsize)
+jpegxr_file_CreateDecompress (j_file_ptr cinfo, int version, size_t structsize)
 {
   int i;
 
   /* Guard against version mismatches between library and caller. */
-  cinfo->mem = NULL;		/* so jpegxr_destroy knows mem mgr not called */
+  cinfo->mem = NULL;		/* so jpegxr_file_destroy knows mem mgr not called */
   if (version != JPEGXR_LIB_VERSION)
     ERREXIT2(cinfo, JERR_BAD_LIB_VERSION, JPEGXR_LIB_VERSION, version);
-  if (structsize != SIZEOF(struct jpegxr_decompress_struct))
+  if (structsize != SIZEOF(struct jpegxr_file_struct))
     ERREXIT2(cinfo, JERR_BAD_STRUCT_SIZE, 
-	     (int) SIZEOF(struct jpegxr_decompress_struct), (int) structsize);
+	     (int) SIZEOF(struct jpegxr_file_struct), (int) structsize);
 
   /* For debugging purposes, we zero the whole master structure.
    * But the application has already set the err pointer, and may have set
@@ -46,11 +44,10 @@ jpegxr_CreateDecompress (j_decompress_ptr cinfo, int version, size_t structsize)
   {
     struct jpeg_error_mgr * err = cinfo->err;
     void * client_data = cinfo->client_data; /* ignore Purify complaint here */
-    MEMZERO(cinfo, SIZEOF(struct jpegxr_decompress_struct));
+    MEMZERO(cinfo, SIZEOF(struct jpegxr_file_struct));
     cinfo->err = err;
     cinfo->client_data = client_data;
   }
-  cinfo->is_decompressor = TRUE;
 
   /* Initialize a memory manager instance for this object */
   jinit_memory_mgr((j_common_ptr) cinfo);
@@ -58,14 +55,8 @@ jpegxr_CreateDecompress (j_decompress_ptr cinfo, int version, size_t structsize)
   /* Zero out pointers to permanent structures. */
   cinfo->progress = NULL;
   cinfo->src = NULL;
-  
-  /* For now we keep records of the header with the decompression object.
-   * These must be allocated. */
-  cinfo->file_hdr = NULL;
-  cinfo->hdr = NULL;
-  cinfo->img_plane_hdr = NULL;
-  cinfo->alpha_plane_hdr = NULL;
-  cinfo->idx_tbl = NULL;
+  // TODO - NULL the directories?
+  //cinfo->dirs = NULL;
 
   /* OK, I'm ready */
   cinfo->global_state = DSTATE_START;
@@ -73,53 +64,15 @@ jpegxr_CreateDecompress (j_decompress_ptr cinfo, int version, size_t structsize)
 
 
 /*
- * Read the start of a JPEG-XR file to obtain codestream details.
- *
- */
-GLOBAL(int)
-jpegxr_read_file (j_decompress_ptr cinfo)
-{
-  int retcode;
-
-  /* Check we are in the correct state. TODO - do we need inheader state? */
-  if (cinfo->global_state != DSTATE_START &&
-      cinfo->global_state != DSTATE_INHEADER)
-    ERREXIT1(cinfo, JERR_BAD_STATE, cinfo->global_state);
-
-  /* For now just parse image and tile layer */
-  retcode = jpegxr_parse_file_header(cinfo);
-
-
-  /* TODO - what new return codes are needed? */
-  switch (retcode) {
-  case JPEG_REACHED_SOS:
-    retcode = JPEG_HEADER_OK;
-    break;
-  case JPEG_REACHED_EOI:
-    /* Reset to start state; it would be safer to require the application to
-     * call jpeg_abort, but we can't change it now for compatibility reasons.
-     * A side effect is to free any temporary memory (there shouldn't be any).
-     */
-    //jpeg_abort((j_common_ptr) cinfo); /* sets state = DSTATE_START */
-    retcode = JPEG_HEADER_TABLES_ONLY;
-    break;
-  case JPEG_SUSPENDED:
-    /* no work */
-    break;
-  }
-
-  return retcode;
-}
-
-/*
- * Read start of JPEG-XR codestream to obtain decompression parameteres.
- * Need only initialize JPEG object and supply a data source
+ * Read JPEG-XR file to obtain headers and decompression parameters.
+ * This reads file, directory, image, tile and macroblock layer 
+ * information. Need only initialize JPEG object and supply a data source
  * before calling. This simply wraps parsing calls with some additional
  * error management.
  *
  */
 GLOBAL(int)
-jpegxr_read_header (j_decompress_ptr cinfo, boolean require_image)
+jpegxr_file_read_header (j_file_ptr cinfo)
 {
   int retcode;
 
@@ -129,7 +82,7 @@ jpegxr_read_header (j_decompress_ptr cinfo, boolean require_image)
     ERREXIT1(cinfo, JERR_BAD_STATE, cinfo->global_state);
 
   /* For now just parse image and tile layer */
-  retcode = jpegxr_parse_image_tile_layer(cinfo);
+  //retcode = jpegxr_parse_image_tile_layer(cinfo);
 
 
   /* TODO - what new return codes are needed? */
@@ -138,9 +91,6 @@ jpegxr_read_header (j_decompress_ptr cinfo, boolean require_image)
     retcode = JPEG_HEADER_OK;
     break;
   case JPEG_REACHED_EOI:
-    if (require_image)		/* Complain if application wanted an image */
-      ERREXIT(cinfo, JERR_NO_IMAGE);
-      /* Do we need an equivalent of require image? */
     /* Reset to start state; it would be safer to require the application to
      * call jpeg_abort, but we can't change it now for compatibility reasons.
      * A side effect is to free any temporary memory (there shouldn't be any).
@@ -157,17 +107,14 @@ jpegxr_read_header (j_decompress_ptr cinfo, boolean require_image)
 }
 
 
-
 /*
- * Destruction of a JPEG decompression object
+ * Destruction of a JPEG-XR file decompression object
  */
 GLOBAL(void)
-jpegxr_destroy_decompress (j_decompress_ptr cinfo)
+jpegxr_file_destroy (j_file_ptr cinfo)
 {
   jpegxr_destroy((j_common_ptr) cinfo); /* use common routine */
 }
-
-
 
 /*
  * Destruction of a JPEG-XR object.

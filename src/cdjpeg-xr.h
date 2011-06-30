@@ -28,14 +28,14 @@ struct djpeg_dest_struct {
   /* start_output is called after jpeg_start_decompress finishes.
    * The color map will be ready at this time, if one is needed.
    */
-  JMETHOD(void, start_output, (j_decompress_ptr cinfo,
+  JMETHOD(void, start_output, (j_common_ptr cinfo,
 			       djpeg_dest_ptr dinfo));
   /* Emit the specified number of pixel rows from the buffer. */
-  JMETHOD(void, put_pixel_rows, (j_decompress_ptr cinfo,
+  JMETHOD(void, put_pixel_rows, (j_common_ptr cinfo,
 				 djpeg_dest_ptr dinfo,
 				 JDIMENSION rows_supplied));
   /* Finish up at the end of the image. */
-  JMETHOD(void, finish_output, (j_decompress_ptr cinfo,
+  JMETHOD(void, finish_output, (j_common_ptr cinfo,
 				djpeg_dest_ptr dinfo));
 
   /* Target file spec; filled in by djpeg.c after object is created. */
@@ -71,17 +71,17 @@ typedef struct cdjpeg_progress_mgr * cd_progress_ptr;
 
 /* Module selection routines for I/O modules. */
 
-EXTERN(djpeg_dest_ptr) jinit_write_bmp JPP((j_decompress_ptr cinfo,
+EXTERN(djpeg_dest_ptr) jinit_write_bmp JPP((j_common_ptr cinfo,
 					    boolean is_os2));
-EXTERN(djpeg_dest_ptr) jinit_write_gif JPP((j_decompress_ptr cinfo));
-EXTERN(djpeg_dest_ptr) jinit_write_ppm JPP((j_decompress_ptr cinfo));
-EXTERN(djpeg_dest_ptr) jinit_write_rle JPP((j_decompress_ptr cinfo));
-EXTERN(djpeg_dest_ptr) jinit_write_targa JPP((j_decompress_ptr cinfo));
+EXTERN(djpeg_dest_ptr) jinit_write_gif JPP((j_common_ptr cinfo));
+EXTERN(djpeg_dest_ptr) jinit_write_ppm JPP((j_common_ptr cinfo));
+EXTERN(djpeg_dest_ptr) jinit_write_rle JPP((j_common_ptr cinfo));
+EXTERN(djpeg_dest_ptr) jinit_write_targa JPP((j_common_ptr cinfo));
 
 
 /* djpeg support routines (in rdcolmap.c) */
 
-EXTERN(void) read_color_map JPP((j_decompress_ptr cinfo, FILE * infile));
+EXTERN(void) read_color_map JPP((j_common_ptr cinfo, FILE * infile));
 
 /* common support routines (in cdjpeg.c) */
 

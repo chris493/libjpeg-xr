@@ -2,6 +2,9 @@
  * jxrparse.c
  *
  * Copyright (C) 2011, Chris Harding.
+ * Copyright (C) 1994-1998, Thomas G. Lane.
+ * This file is part of the Independent JPEG Group's software.
+ * For conditions of distribution and use, see the accompanying README file.
  * 
  * This file contains algorithms used in the parsing stages of JPEG XR
  * decoding.
@@ -117,19 +120,19 @@
  *  
  */          
 LOCAL(boolean)
-parse_ifd_entry (j_decompress_ptr cinfo)
+parse_ifd_entry (j_file_ptr cinfo)
 {
   UINT16 c2;
   UINT32 c4;
-  
-  /* Get correct entry to fill in */
-  /* Memory has already been allocated. */
+  /*
+  /* Get correct entry to fill in 
+  /* Memory has already been allocated. 
   UINT16 idx = cinfo->file_dir->num_entries; 
   ifd_entry * ifde = &cinfo->file_dir->ifd_entry_list[idx];
   
   INPUT_VARS(cinfo);
   
-  /* Parse fields */
+  /* Parse fields 
   INPUT_2BYTES_LE(cinfo, c2, return FALSE);
   ifde->field_tag = c2;
   INPUT_2BYTES_LE(cinfo, c2, return FALSE);
@@ -141,9 +144,9 @@ parse_ifd_entry (j_decompress_ptr cinfo)
   
   INPUT_SYNC(cinfo);
   
-  /* Increment number of entries */
+  /* Increment number of entries 
   cinfo->file_dir->num_entries++;
-  
+  */
   return TRUE;
 }
   
@@ -153,63 +156,59 @@ parse_ifd_entry (j_decompress_ptr cinfo)
  *  
  */          
 GLOBAL(int)
-jpegxr_parse_file_header (j_decompress_ptr cinfo)
+jpegxr_file_parse_header (j_file_ptr cinfo)
 {
   UINT8 c;
   UINT16 c2;
   UINT32 c4;
   
-  /* File structs to fill in */
-  file_header file_hdr;
-  image_file_directory file_dir;
-  cinfo->file_hdr = &file_hdr;
-  cinfo->file_dir = &file_dir;
   
   INPUT_VARS(cinfo);  
   
   /* Parse file parameters */
   INPUT_2BYTES(cinfo, c2, return FALSE);
-  cinfo->file_hdr->fixed_file_header_ii_2bytes = c2;
+  cinfo->fixed_file_header_ii_2bytes = c2;
   INPUT_BYTE(cinfo, c, return FALSE);
-  cinfo->file_hdr->fixed_file_header_0xbc_byte = c;
+  cinfo->fixed_file_header_0xbc_byte = c;
   INPUT_BYTE(cinfo, c, return FALSE);
-  cinfo->file_hdr->file_version_id = c;
+  cinfo->file_version_id = c;
   /* Offset is stored in little endian format */
   INPUT_4BYTES_LE(cinfo, c4, return FALSE);
-  cinfo->file_hdr->first_ifd_offset = c4;
+  cinfo->first_ifd_offset = c4;
   
   /* Skip to the directory */
   INPUT_SYNC(cinfo);
   /* file header is fixed size of 6 bytes */
   /* TODO - a more elegant way of fast forward/rewinding? */
-  (*cinfo->src->skip_input_data) (cinfo, (long) cinfo->file_hdr->first_ifd_offset-6);
+  (*cinfo->src->skip_input_data) (cinfo, (long) cinfo->first_ifd_offset-6);
   INPUT_RELOAD(cinfo);
   
-  
+  /*
   /* Parse directory */
-  /* TODO - Currently we only support one directory, one entry */
+  /* TODO - Currently we only support one directory, one entry 
   INPUT_2BYTES_LE(cinfo, c2, return FALSE);
   cinfo->file_dir->num_entries = 0;
-  /* Create list of IFD entries*/
+  /* Create list of IFD entries
   ifd_entry entry_list[c2];
   cinfo->file_dir->ifd_entry_list = entry_list;
   for (int i=0; i<c2; i++) {
     if (! parse_ifd_entry(cinfo)) return FALSE;
   }
-  /* Next directory */
+  /* Next directory 
   INPUT_4BYTES_LE(cinfo, c4, return FALSE);
   cinfo->file_dir->zero_or_next_ifd_offset = c4;
+  */
   
   INPUT_SYNC(cinfo);
    
    
-   
   fprintf(stdout, "File header\n");
-  fprintf(stdout, "fixed_file_header_ii_2bytes : %x\n", cinfo->file_hdr->fixed_file_header_ii_2bytes);
-  fprintf(stdout, "fixed_file_header_0xbc_byte : %x\n", cinfo->file_hdr->fixed_file_header_0xbc_byte);
-  fprintf(stdout, "file_version_id : %x\n", cinfo->file_hdr->file_version_id);
-  fprintf(stdout, "first_ifd_offset : %x\n", cinfo->file_hdr->first_ifd_offset);
+  fprintf(stdout, "fixed_file_header_ii_2bytes : %x\n", cinfo->fixed_file_header_ii_2bytes);
+  fprintf(stdout, "fixed_file_header_0xbc_byte : %x\n", cinfo->fixed_file_header_0xbc_byte);
+  fprintf(stdout, "file_version_id : %x\n", cinfo->file_version_id);
+  fprintf(stdout, "first_ifd_offset : %x\n", cinfo->first_ifd_offset);
   
+  /*
   fprintf(stdout, "Directory\n");
   fprintf(stdout, "num_entries: %x\n", cinfo->file_dir->num_entries);
   fprintf(stdout, "zero_or_next_ifd_offset: %x\n", cinfo->file_dir->zero_or_next_ifd_offset);
@@ -219,34 +218,7 @@ jpegxr_parse_file_header (j_decompress_ptr cinfo)
   fprintf(stdout, "element_type : %x\n",      cinfo->file_dir->ifd_entry_list[0].element_type);
   fprintf(stdout, "num_elements : %x\n",      cinfo->file_dir->ifd_entry_list[0].num_elements);
   fprintf(stdout, "values_or_offset : %x\n",  cinfo->file_dir->ifd_entry_list[0].values_or_offset);
-  
-  
-  
-  /* TODO return correct code */
-  return JPEG_REACHED_SOS;
-}
-
-/*
- * Parse image/image plane headers and read the tile index table.
- *  
- */          
-GLOBAL(int)
-jpegxr_parse_image_tile_layer (j_decompress_ptr cinfo, boolean require_image)
-{
-  
-  
-  UINT8 t;
-  
-  INPUT_VARS(cinfo);
-  
-  fprintf(stdout, "Parsing called: ");
-  for (int i=0; i<100; i++) {
-    INPUT_BYTE(cinfo, t, return FALSE);
-    fprintf(stdout, "%x.", t);
-  }
-  fprintf(stdout, "\n");
-  
-  INPUT_SYNC(cinfo);
+  */
   
   
   /* TODO return correct code */
