@@ -428,10 +428,26 @@ typedef enum {
       JFIELDTAG_IMAGE_BYTE_COUNT = 0xBCC1
 } JXR_FIELD_TAG;
 
+typedef enum {
+      JELEMTYPE_BYTE = 1,
+      JELEMTYPE_UTF8,
+      JELEMTYPE_USHORT,
+      JELEMTYPE_ULONG,
+      JELEMTYPE_URATIONAL,
+      JELEMTYPE_SBYTE,
+      JELEMTYPE_UNDEFINED,
+      JELEMTYPE_SSHORT,
+      JELEMTYPE_SLONG,
+      JELEMTYPE_SRATIONAL,
+      JELEMTYPE_FLOAT,
+      JELEMTYPE_DOUBLE
+} JXR_ELEMENT_TYPE;
+
+
 /* Image file directory entry */
 typedef struct {
     JXR_FIELD_TAG field_tag;
-    UINT16 element_type;
+    JXR_ELEMENT_TYPE element_type;
     UINT32 num_elements;
     UINT32 values_or_offset;
 } ifd_entry;

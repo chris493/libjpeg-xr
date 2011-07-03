@@ -130,6 +130,62 @@
 		  idx++; \
 		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 24; )
 
+/*
+ * Process an IFD entry. This will involve seeking and reading from the
+ * stream if num_elements * element_size (determined by element_type)
+ * is larger than 4 bytes.
+ *  
+ */          
+LOCAL(boolean)
+process_ifd (j_dir_ptr dinfo, ifd_entry* ifde)
+{
+  UINT8 c;
+  UINT16 c2;
+  UINT32 c4;
+  
+  INPUT_VARS(dinfo);
+  
+  switch (ifde->field_tag) {
+    case JFIELDTAG_PIXEL_FORMAT:
+      /* Always 16 elements so have to read from stream */
+      /* Seek to correct offset */
+      (*dinfo->src->seek_input_data) (dinfo, (long) ifde->values_or_offset);
+      INPUT_RELOAD(dinfo);
+      /* Size depends on type */
+      switch (ifde->element_type) {
+	case (JELEMTYPE_BYTE):
+	  for (int i=0; i<16; i++) {
+	    INPUT_BYTE(dinfo,c,return FALSE);
+	    dinfo->pixel_format[i] = c;
+	  }
+	  break;
+	default :
+	  /* TODO - some kind of error here */
+	  break;
+      }
+      break;
+    case JFIELDTAG_IMAGE_WIDTH:
+      dinfo->image_width = ifde->values_or_offset;
+      break;
+    case JFIELDTAG_IMAGE_HEIGHT:
+      dinfo->image_height = ifde->values_or_offset;
+      break;
+    case JFIELDTAG_IMAGE_OFFSET:
+      dinfo->image_offset = ifde->values_or_offset;
+      break;
+    case JFIELDTAG_IMAGE_BYTE_COUNT:
+      dinfo->image_byte_count = ifde->values_or_offset;
+      break;
+    default :
+      /* TODO - output some message if not supported? */
+      break;
+  }
+  
+  INPUT_SYNC(dinfo);
+  
+  return TRUE;
+}
+
 
 /*
  * Parse image directory header.
@@ -180,21 +236,12 @@ jpegxr_dir_parse_header (j_dir_ptr dinfo)
   dinfo->zero_or_next_ifd_offset = c4;
   
   INPUT_SYNC(dinfo);
-   
+  
+  /* Process each IFD entry */
+  for (int i=0; i < dinfo->num_entries; i++) {
+    process_ifd(dinfo, dinfo->ifd_entry_list[i]);
+  }
   
   /* TODO return correct code */
   return JPEG_REACHED_SOS;
-}
-
-/*
- * Process an IFD entry. This will involve seeking and reading from the
- * stream if num_elements * element_size (determined by element_type)
- * is larger than 4 bytes.
- *  
- */          
-LOCAL(int)
-process_ifd (j_dir_ptr dinfo, ifd_entry* idfe)
-{
-  switch (ifde->
-  
 }

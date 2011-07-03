@@ -157,11 +157,7 @@ jpegxr_file_parse_header (j_file_ptr finfo)
   
   /* Seek to the directory */
   INPUT_SYNC(finfo);
-  (*finfo->src->seek_input_data) (finfo, (long) finfo->first_ifd_offset);
-  INPUT_RELOAD(finfo);
-  
-  INPUT_SYNC(finfo);
-   
+  (*finfo->src->seek_input_data) (finfo, (long) finfo->first_ifd_offset);   
   
   /* TODO return correct code */
   return JPEG_REACHED_SOS;
