@@ -418,18 +418,23 @@ struct jpegxr_image_struct {
 
 /* Data types for JPEG-XR directory instances */
 
+/* Supported field tags for IFD entries */
+/* TODO - add support for all specified field tags. */
+typedef enum {
+      JFIELDTAG_PIXEL_FORMAT = 0xBC01,
+      JFIELDTAG_IMAGE_HEIGHT = 0xBC80,
+      JFIELDTAG_IMAGE_WIDTH = 0xBC81,
+      JFIELDTAG_IMAGE_OFFSET = 0xBCC0,
+      JFIELDTAG_IMAGE_BYTE_COUNT = 0xBCC1
+} JXR_FIELD_TAG;
+
 /* Image file directory entry */
 typedef struct {
-    UINT16 field_tag;
+    JXR_FIELD_TAG field_tag;
     UINT16 element_type;
     UINT32 num_elements;
     UINT32 values_or_offset;
 } ifd_entry;
-
-/* Image file directory header */
-typedef struct {
-
-} image_file_directory;
 
 /* Master record for a JPEG-XR directory decompression instance */
 struct jpegxr_dir_struct {
@@ -441,13 +446,13 @@ struct jpegxr_dir_struct {
   /* Number of entries in the directory */
   UINT16 num_entries;
   /* Pointer to head of list of ifd entries */
-  /* Currently there must be exactly 5. */
-  ifd_entry * ifd_entry_list[5];
+  /* Currently we ignore all except the minimally requred 5. */
+  ifd_entry ** ifd_entry_list;
   
   /* Required entry values */
   /* Currently these are the only entries supported. All directories
-   * must contain at least these entries. TODO - 1) Intepret pixel
-   * format. 2) Add support for optional entries. */
+   * must contain at least these entries. TODO - Intepret pixel
+   * format. */
   UINT8 pixel_format[16];
   UINT32 image_width; 
   UINT32 image_height;
@@ -482,7 +487,8 @@ struct jpegxr_file_struct {
 
   /* Image file directories */
   unsigned int num_dirs;
-  j_dir_ptr dirs[];
+  /* pointer to head of list */
+  j_dir_ptr * dirs; // currently only one supported
   
 };
 
@@ -566,10 +572,13 @@ struct jpeg_progress_mgr {
 struct jpeg_source_mgr {
   const JOCTET * next_input_byte; /* => next byte to read from buffer */
   size_t bytes_in_buffer;	/* # of bytes remaining in buffer */
+  long idx;	/* Index from the start of the source stream  */
 
   JMETHOD(void, init_source, (j_common_ptr cinfo));
   JMETHOD(boolean, fill_input_buffer, (j_common_ptr cinfo));
   JMETHOD(void, skip_input_data, (j_common_ptr cinfo, long num_bytes));
+  JMETHOD(void, rewind_input_data, (j_common_ptr cinfo, long num_bytes));
+  JMETHOD(void, seek_input_data, (j_common_ptr cinfo, long offset));
   JMETHOD(boolean, resync_to_restart, (j_common_ptr cinfo, int desired));
   JMETHOD(void, term_source, (j_common_ptr cinfo));
 };
@@ -671,6 +680,12 @@ EXTERN(struct jpeg_error_mgr *) jpeg_std_error
 			  (size_t) sizeof(struct jpegxr_file_struct))
 EXTERN(void) jpegxr_file_CreateDecompress JPP((j_file_ptr cinfo,
 					int version, size_t structsize));
+					
+#define jpegxr_dir_create_decompress(cinfo) \
+    jpegxr_dir_CreateDecompress((cinfo), JPEGXR_LIB_VERSION, \
+			  (size_t) sizeof(struct jpegxr_dir_struct))
+EXTERN(void) jpegxr_dir_CreateDecompress JPP((j_dir_ptr cinfo,
+					int version, size_t structsize));
 
 /* Standard data source manager: stdio streams. */
 /* Caller is responsible for opening the file before and closing after. */
@@ -679,6 +694,9 @@ EXTERN(void) jpeg_stdio_src JPP((j_common_ptr cinfo, FILE * infile));
 
 /* Read start of JPEG-XR codestream to obtain decompression parameters. */
 EXTERN(int) jpegxr_file_read_header JPP((j_file_ptr cinfo));
+
+/* Read start of JPEG-XR codestream to obtain decompression parameters. */
+EXTERN(int) jpegxr_dir_read_header JPP((j_dir_ptr cinfo));
 
 
 /* Destroy JPEG-XR file object. */

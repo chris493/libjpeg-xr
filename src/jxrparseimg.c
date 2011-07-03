@@ -1,19 +1,18 @@
 /*
- * jxrparse.c
+ * jxrfile.c
  *
  * Copyright (C) 2011, Chris Harding.
  * Copyright (C) 1994-1998, Thomas G. Lane.
  * This file is part of the Independent JPEG Group's software.
  * For conditions of distribution and use, see the accompanying README file.
  * 
- * This file contains algorithms used in the parsing stages of JPEG XR
- * decoding.
+ * This file contains algorithms used to parse the file layer of .jxr
+ * input file.
  */
 
 #define JPEG_INTERNALS
 #include "jinclude.h"
 #include "jpegxrlib.h"
-
 
 /*
  * Macros for fetching data from the data source module.
@@ -27,17 +26,20 @@
 #define INPUT_VARS(cinfo)  \
 	struct jpeg_source_mgr * datasrc = (cinfo)->src;  \
 	const JOCTET * next_input_byte = datasrc->next_input_byte;  \
-	size_t bytes_in_buffer = datasrc->bytes_in_buffer
+	size_t bytes_in_buffer = datasrc->bytes_in_buffer;  \
+	long idx = datasrc->idx
 
 /* Unload the local copies --- do this only at a restart boundary */
 #define INPUT_SYNC(cinfo)  \
 	( datasrc->next_input_byte = next_input_byte,  \
-	  datasrc->bytes_in_buffer = bytes_in_buffer )
+	  datasrc->bytes_in_buffer = bytes_in_buffer,	\
+	  datasrc->idx = idx	)
 
 /* Reload the local copies --- used only in MAKE_BYTE_AVAIL */
 #define INPUT_RELOAD(cinfo)  \
 	( next_input_byte = datasrc->next_input_byte,  \
-	  bytes_in_buffer = datasrc->bytes_in_buffer )
+	  bytes_in_buffer = datasrc->bytes_in_buffer,	\
+	  idx = datasrc->idx	)
 
 /* Internal macro for INPUT_BYTE and INPUT_2BYTES: make a byte available.
  * Note we do *not* do INPUT_SYNC before calling fill_input_buffer,
@@ -56,6 +58,7 @@
 #define INPUT_BYTE(cinfo,V,action)  \
 	MAKESTMT( MAKE_BYTE_AVAIL(cinfo,action); \
 		  bytes_in_buffer--; \
+		  idx++; \
 		  V = GETJOCTET(*next_input_byte++); )
 
 /* Read two bytes interpreted as an unsigned 16-bit integer.
@@ -64,9 +67,11 @@
 #define INPUT_2BYTES(cinfo,V,action)  \
 	MAKESTMT( MAKE_BYTE_AVAIL(cinfo,action); \
 		  bytes_in_buffer--; \
+		  idx++; \
 		  V = ((unsigned int) GETJOCTET(*next_input_byte++)) << 8; \
 		  MAKE_BYTE_AVAIL(cinfo,action); \
 		  bytes_in_buffer--; \
+		  idx++; \
 		  V += ((unsigned int) GETJOCTET(*next_input_byte++)) << 0; )
       
 /* As above, but read two bytes interpreted as an unsigned 16-bit
@@ -75,9 +80,11 @@
 #define INPUT_2BYTES_LE(cinfo,V,action)  \
 	MAKESTMT( MAKE_BYTE_AVAIL(cinfo,action); \
 		  bytes_in_buffer--; \
+		  idx++; \
 		  V = ((unsigned int) GETJOCTET(*next_input_byte++)) << 0; \
 		  MAKE_BYTE_AVAIL(cinfo,action); \
 		  bytes_in_buffer--; \
+		  idx++; \
 		  V += ((unsigned int) GETJOCTET(*next_input_byte++)) << 8; )
       
 /* Read four bytes interpreted as an unsigned 32-bit integer.
@@ -86,15 +93,19 @@
 #define INPUT_4BYTES(cinfo,V,action)  \
 	MAKESTMT( MAKE_BYTE_AVAIL(cinfo,action); \
 		  bytes_in_buffer--; \
+		  idx++; \
 		  V = ((UINT32) GETJOCTET(*next_input_byte++)) << 24; \
 		  MAKE_BYTE_AVAIL(cinfo,action); \
 		  bytes_in_buffer--; \
+		  idx++; \
 		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 16; \
 		  MAKE_BYTE_AVAIL(cinfo,action); \
 		  bytes_in_buffer--; \
+		  idx++; \
 		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 8;  \
 		  MAKE_BYTE_AVAIL(cinfo,action); \
 		  bytes_in_buffer--; \
+		  idx++; \
 		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 0; )
       
 /* As above, but read four bytes interpreted as an unsigned 32-bit
@@ -103,124 +114,18 @@
 #define INPUT_4BYTES_LE(cinfo,V,action)  \
 	MAKESTMT( MAKE_BYTE_AVAIL(cinfo,action); \
 		  bytes_in_buffer--; \
+		  idx++; \
 		  V = ((UINT32) GETJOCTET(*next_input_byte++))  << 0; \
 		  MAKE_BYTE_AVAIL(cinfo,action); \
 		  bytes_in_buffer--; \
+		  idx++; \
 		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 8; \
 		  MAKE_BYTE_AVAIL(cinfo,action); \
 		  bytes_in_buffer--; \
+		  idx++; \
 		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 16;  \
 		  MAKE_BYTE_AVAIL(cinfo,action); \
 		  bytes_in_buffer--; \
+		  idx++; \
 		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 24; )
 
-/*
- * Parse image file directory entry. Eventually this
- * needs to be moved elsewhere.
- *  
- */          
-LOCAL(boolean)
-parse_ifd_entry (j_file_ptr cinfo)
-{
-  UINT16 c2;
-  UINT32 c4;
-  /*
-  /* Get correct entry to fill in 
-  /* Memory has already been allocated. 
-  UINT16 idx = cinfo->file_dir->num_entries; 
-  ifd_entry * ifde = &cinfo->file_dir->ifd_entry_list[idx];
-  
-  INPUT_VARS(cinfo);
-  
-  /* Parse fields 
-  INPUT_2BYTES_LE(cinfo, c2, return FALSE);
-  ifde->field_tag = c2;
-  INPUT_2BYTES_LE(cinfo, c2, return FALSE);
-  ifde->element_type = c2;
-  INPUT_4BYTES_LE(cinfo, c4, return FALSE);
-  ifde->num_elements = c4;
-  INPUT_4BYTES_LE(cinfo, c4, return FALSE);
-  ifde->values_or_offset = c4;
-  
-  INPUT_SYNC(cinfo);
-  
-  /* Increment number of entries 
-  cinfo->file_dir->num_entries++;
-  */
-  return TRUE;
-}
-  
-/*
- * Parse image file header. We also parse the directory. Eventually this
- * needs to be moved elsewhere.
- *  
- */          
-GLOBAL(int)
-jpegxr_file_parse_header (j_file_ptr cinfo)
-{
-  UINT8 c;
-  UINT16 c2;
-  UINT32 c4;
-  
-  
-  INPUT_VARS(cinfo);  
-  
-  /* Parse file parameters */
-  INPUT_2BYTES(cinfo, c2, return FALSE);
-  cinfo->fixed_file_header_ii_2bytes = c2;
-  INPUT_BYTE(cinfo, c, return FALSE);
-  cinfo->fixed_file_header_0xbc_byte = c;
-  INPUT_BYTE(cinfo, c, return FALSE);
-  cinfo->file_version_id = c;
-  /* Offset is stored in little endian format */
-  INPUT_4BYTES_LE(cinfo, c4, return FALSE);
-  cinfo->first_ifd_offset = c4;
-  
-  /* Skip to the directory */
-  INPUT_SYNC(cinfo);
-  /* file header is fixed size of 6 bytes */
-  /* TODO - a more elegant way of fast forward/rewinding? */
-  (*cinfo->src->skip_input_data) (cinfo, (long) cinfo->first_ifd_offset-6);
-  INPUT_RELOAD(cinfo);
-  
-  /*
-  /* Parse directory */
-  /* TODO - Currently we only support one directory, one entry 
-  INPUT_2BYTES_LE(cinfo, c2, return FALSE);
-  cinfo->file_dir->num_entries = 0;
-  /* Create list of IFD entries
-  ifd_entry entry_list[c2];
-  cinfo->file_dir->ifd_entry_list = entry_list;
-  for (int i=0; i<c2; i++) {
-    if (! parse_ifd_entry(cinfo)) return FALSE;
-  }
-  /* Next directory 
-  INPUT_4BYTES_LE(cinfo, c4, return FALSE);
-  cinfo->file_dir->zero_or_next_ifd_offset = c4;
-  */
-  
-  INPUT_SYNC(cinfo);
-   
-   
-  fprintf(stdout, "File header\n");
-  fprintf(stdout, "fixed_file_header_ii_2bytes : %x\n", cinfo->fixed_file_header_ii_2bytes);
-  fprintf(stdout, "fixed_file_header_0xbc_byte : %x\n", cinfo->fixed_file_header_0xbc_byte);
-  fprintf(stdout, "file_version_id : %x\n", cinfo->file_version_id);
-  fprintf(stdout, "first_ifd_offset : %x\n", cinfo->first_ifd_offset);
-  
-  /*
-  fprintf(stdout, "Directory\n");
-  fprintf(stdout, "num_entries: %x\n", cinfo->file_dir->num_entries);
-  fprintf(stdout, "zero_or_next_ifd_offset: %x\n", cinfo->file_dir->zero_or_next_ifd_offset);
-  
-  fprintf(stdout, "First IFD entry\n");
-  fprintf(stdout, "field_tag : %x\n",         cinfo->file_dir->ifd_entry_list[0].field_tag);
-  fprintf(stdout, "element_type : %x\n",      cinfo->file_dir->ifd_entry_list[0].element_type);
-  fprintf(stdout, "num_elements : %x\n",      cinfo->file_dir->ifd_entry_list[0].num_elements);
-  fprintf(stdout, "values_or_offset : %x\n",  cinfo->file_dir->ifd_entry_list[0].values_or_offset);
-  */
-  
-  
-  /* TODO return correct code */
-  return JPEG_REACHED_SOS;
-}

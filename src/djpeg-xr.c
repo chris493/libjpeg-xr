@@ -233,7 +233,7 @@ parse_switches (j_file_ptr cinfo, int argc, char **argv,
 int
 main (int argc, char **argv)
 {
-  struct jpegxr_file_struct cinfo;
+  struct jpegxr_file_struct finfo;
   struct jpeg_error_mgr jerr;
 #ifdef PROGRESS_REPORT
   struct cdjpeg_progress_mgr progress;
@@ -254,8 +254,8 @@ main (int argc, char **argv)
 
   /* Initialize the JPEG-XR file decompression object with default error
    * handling. */
-  cinfo.err = jpeg_std_error(&jerr);
-  jpegxr_file_create_decompress(&cinfo);
+  finfo.err = jpeg_std_error(&jerr);
+  jpegxr_file_create_decompress(&finfo);
   /* Add some application-specific error messages (from cderror.h) */
   jerr.addon_message_table = cdjpeg_message_table;
   jerr.first_addon_message = JMSG_FIRSTADDONCODE;
@@ -263,7 +263,7 @@ main (int argc, char **argv)
 
   /* Now safe to enable signal catcher. */
 #ifdef NEED_SIGNAL_CATCHER
-  enable_signal_catcher((j_common_ptr) &cinfo);
+  enable_signal_catcher((j_common_ptr) &finfo);
 #endif
 
   /* Scan command line to find file names. */
@@ -273,7 +273,7 @@ main (int argc, char **argv)
    * (Exception: tracing level set here controls verbosity for COM markers
    * found during jpeg_read_header...)
    */
-  file_index = parse_switches(&cinfo, argc, argv, 0, FALSE);
+  file_index = parse_switches(&finfo, argc, argv, 0, FALSE);
 
 #ifdef TWO_FILE_COMMANDLINE
   /* Must have either -outfile switch or explicit output file name */
@@ -320,22 +320,23 @@ main (int argc, char **argv)
     /* default output file is stdout */
     output_file = write_stdout();
   }
+  
 
 #ifdef PROGRESS_REPORT
-  start_progress_monitor((j_common_ptr) &cinfo, &progress);
+  start_progress_monitor((j_common_ptr) &finfo, &progress);
 #endif
 
   /* Specify data source for decompression */
-  jpeg_stdio_src((j_common_ptr) &cinfo, input_file);
+  jpeg_stdio_src((j_common_ptr) &finfo, input_file);
   
   /* Read file header */
-  (void) jpegxr_file_read_header(&cinfo);
+  (void) jpegxr_file_read_header(&finfo);
 
 	/* Verify header was read succesfully */
 	fprintf(stdout, "djpeg-xr called.\n");
 
   /* Abort decompression and release memory. */
-  jpegxr_file_destroy(&cinfo);
+  jpegxr_file_destroy(&finfo);
 
   /* Close files, if we opened them */
   if (input_file != stdin)
@@ -344,7 +345,7 @@ main (int argc, char **argv)
     fclose(output_file);
 
 #ifdef PROGRESS_REPORT
-  end_progress_monitor((j_common_ptr) &cinfo);
+  end_progress_monitor((j_common_ptr) &finfo);
 #endif
 
   /* All done. */

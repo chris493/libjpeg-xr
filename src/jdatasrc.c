@@ -136,6 +136,7 @@ skip_input_data (j_common_ptr cinfo, long num_bytes)
   if (num_bytes > 0) {
     while (num_bytes > (long) src->pub.bytes_in_buffer) {
       num_bytes -= (long) src->pub.bytes_in_buffer;
+      src->pub.idx += (long) src->pub.bytes_in_buffer;
       (void) fill_input_buffer(cinfo);
       /* note we assume that fill_input_buffer will never return FALSE,
        * so suspension need not be handled.
@@ -143,9 +144,52 @@ skip_input_data (j_common_ptr cinfo, long num_bytes)
     }
     src->pub.next_input_byte += (size_t) num_bytes;
     src->pub.bytes_in_buffer -= (size_t) num_bytes;
+    src->pub.idx += (size_t) num_bytes;
   }
 }
 
+/*
+ * Rewind data --- used to go back to data still in the buffer
+ *
+ * If the rewind amount is larger than the INPUT_BUF_SIZE - bytes_in_buffer
+ * then we can't rewind, so this is pretty sketchy. It will have to do
+ * for now. 
+ */
+
+METHODDEF(void)
+rewind_input_data (j_common_ptr cinfo, long num_bytes)
+{
+  my_src_ptr src = (my_src_ptr) cinfo->src;
+
+  if (num_bytes > 0) {
+    if (num_bytes > (INPUT_BUF_SIZE - src->pub.bytes_in_buffer)) {
+      // TODO - proper error code for this.
+      fprintf(stderr, "You tried to rewind too far.");
+    } else {
+      src->pub.next_input_byte -= (size_t) num_bytes;
+      src->pub.bytes_in_buffer += (size_t) num_bytes;
+      src->pub.idx -= (size_t) num_bytes;
+    }
+  }
+}
+
+/*
+ * Seek data --- seek to some positive offset from the source index.
+ *
+ * Source index should be the start of the stream/file. 
+ */
+METHODDEF(void)
+seek_input_data(j_common_ptr cinfo, long offset)
+{
+  my_src_ptr src = (my_src_ptr) cinfo->src;
+  
+  /* Do we need to skip or rewind? */
+  if (offset > src->pub.idx) {
+    skip_input_data (cinfo,   offset - src->pub.idx );
+  } else if (offset < src->pub.idx) {
+    rewind_input_data (cinfo, src->pub.idx - offset );
+  }
+}
 
 /*
  * An additional method that can be provided by data source modules is the
@@ -204,9 +248,12 @@ jpeg_stdio_src (j_common_ptr cinfo, FILE * infile)
   src->pub.init_source = init_source;
   src->pub.fill_input_buffer = fill_input_buffer;
   src->pub.skip_input_data = skip_input_data;
+  src->pub.rewind_input_data = rewind_input_data;
+  src->pub.seek_input_data = seek_input_data;
   src->pub.resync_to_restart = NULL; // TODO - will need a default method if input suspension is supported.
   src->pub.term_source = term_source;
   src->infile = infile;
   src->pub.bytes_in_buffer = 0; /* forces fill_input_buffer on first read */
   src->pub.next_input_byte = NULL; /* until buffer loaded */
+  src->pub.idx = 0; /* start of the stream */
 }

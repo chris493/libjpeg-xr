@@ -89,8 +89,8 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)" \
 	"$(DESTDIR)$(man1dir)" "$(DESTDIR)$(includedir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libjpeg_xr_la_LIBADD =
-am__objects_1 = jxrdapi.lo jxrparse.lo jdatasrc.lo jdmaster.lo \
-	jerror.lo jutils.lo jmemmgr.lo @MEMORYMGR@.lo
+am__objects_1 = jxrapi.lo jxrparsefile.lo jxrparsedir.lo jdatasrc.lo \
+	jdmaster.lo jerror.lo jutils.lo jmemmgr.lo @MEMORYMGR@.lo
 am_libjpeg_xr_la_OBJECTS = $(am__objects_1)
 libjpeg_xr_la_OBJECTS = $(am_libjpeg_xr_la_OBJECTS)
 libjpeg_xr_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
@@ -262,8 +262,8 @@ top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = 1.9 dist-zip dist-bzip2 foreign 
 
 # Sources to build library
-LIBSOURCES = jxrdapi.c jxrparse.c jdatasrc.c jdmaster.c \
-							jerror.c jutils.c jmemmgr.c @MEMORYMGR@.c
+LIBSOURCES = jxrapi.c jxrparsefile.c jxrparsedir.c jxrparseimg \
+			jdatasrc.c jdmaster.c jerror.c jutils.c jmemmgr.c @MEMORYMGR@.c
 
 
 # System dependent sources
@@ -497,8 +497,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jmemname.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jmemnobs.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jutils.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jxrdapi.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jxrparse.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jxrapi.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jxrparsedir.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jxrparsefile.Plo@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
