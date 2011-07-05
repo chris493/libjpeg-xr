@@ -330,7 +330,7 @@ main (int argc, char **argv)
   jpeg_stdio_src((j_common_ptr) &finfo, input_file);
   
   /* Read file header */
-  (void) jpegxr_file_read_header(&finfo);
+  (void) jpegxr_file_read_metadata(&finfo);
 
 	/* Verify header was read succesfully */
 	fprintf(stdout, "djpeg-xr called.\n");
