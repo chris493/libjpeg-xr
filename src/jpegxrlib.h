@@ -478,8 +478,8 @@ struct jpegxr_dir_struct {
   /* Coded image instances */
   /* Currently we only support one per directory, but there could be at
    * least an alpha image also. */
-  j_image_ptr * image;
-  //j_decompress_ptr * alpha_image;
+  j_image_ptr image;
+  //j_image_ptr alpha_image;
   
   /* Next directory in codestream, or zero if none. */
   UINT32 zero_or_next_ifd_offset;
@@ -691,16 +691,22 @@ EXTERN(struct jpeg_error_mgr *) jpeg_std_error
  * passed for version mismatch checking.
  * NB: you must set up the error-manager BEFORE calling jpeg_create_xxx.
  */
-#define jpegxr_file_create_decompress(cinfo) \
-    jpegxr_file_CreateDecompress((cinfo), JPEGXR_LIB_VERSION, \
+#define jpegxr_file_create_decompress(finfo) \
+    jpegxr_file_CreateDecompress((finfo), JPEGXR_LIB_VERSION, \
 			  (size_t) sizeof(struct jpegxr_file_struct))
-EXTERN(void) jpegxr_file_CreateDecompress JPP((j_file_ptr cinfo,
+EXTERN(void) jpegxr_file_CreateDecompress JPP((j_file_ptr finfo,
 					int version, size_t structsize));
 					
-#define jpegxr_dir_create_decompress(cinfo) \
-    jpegxr_dir_CreateDecompress((cinfo), JPEGXR_LIB_VERSION, \
+#define jpegxr_dir_create_decompress(dinfo) \
+    jpegxr_dir_CreateDecompress((dinfo), JPEGXR_LIB_VERSION, \
 			  (size_t) sizeof(struct jpegxr_dir_struct))
-EXTERN(void) jpegxr_dir_CreateDecompress JPP((j_dir_ptr cinfo,
+EXTERN(void) jpegxr_dir_CreateDecompress JPP((j_dir_ptr dinfo,
+					int version, size_t structsize));
+          
+#define jpegxr_image_create_decompress(iinfo) \
+    jpegxr_image_CreateDecompress((iinfo), JPEGXR_LIB_VERSION, \
+			  (size_t) sizeof(struct jpegxr_image_struct))
+EXTERN(void) jpegxr_image_CreateDecompress JPP((j_image_ptr iinfo,
 					int version, size_t structsize));
 
 /* Standard data source manager: stdio streams. */
@@ -708,11 +714,22 @@ EXTERN(void) jpegxr_dir_CreateDecompress JPP((j_dir_ptr cinfo,
 EXTERN(void) jpeg_stdio_src JPP((j_common_ptr cinfo, FILE * infile));
 
 
-/* Read start of JPEG-XR codestream to obtain decompression parameters. */
-EXTERN(int) jpegxr_file_read_header JPP((j_file_ptr cinfo));
+/* Read metadata from a .jxr file stream to obtain details of directories
+ * and coded images contained within. */
+EXTERN(int) jpegxr_file_read_metadata JPP((j_file_ptr finfo));
+/* Read start of .jxr file stream */
+EXTERN(int) jpegxr_file_read_header JPP((j_file_ptr finfo));
 
-/* Read start of JPEG-XR codestream to obtain decompression parameters. */
-EXTERN(int) jpegxr_dir_read_header JPP((j_dir_ptr cinfo));
+/* Read metadata from a directory stream to obtain details of coded
+ * image codestreams contained within. */
+EXTERN(int) jpegxr_dir_read_metadata JPP((j_dir_ptr dinfo));
+/* Read start of JPEG-XR directory stream. */
+EXTERN(int) jpegxr_dir_read_header JPP((j_dir_ptr dinfo));
+/* Read IFD entry values from a directory stream */
+EXTERN(int) jpegxr_dir_read_ifd_entries JPP((j_dir_ptr dinfo));
+
+/* Read the header from a JPEG-XR codestream. */
+EXTERN(int) jpegxr_image_read_header JPP((j_image_ptr iinfo));
 
 
 /* Destroy JPEG-XR file object. */

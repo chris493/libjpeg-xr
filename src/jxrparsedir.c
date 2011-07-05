@@ -14,171 +14,70 @@
 #include "jinclude.h"
 #include "jpegxrlib.h"
 
+/* Data read macros */
+#include "jxrdatard.h"
+
 
 /*
- * Macros for fetching data from the data source module.
- *
- * At all times, cinfo->src->next_input_byte and ->bytes_in_buffer reflect
- * the current restart point; we update them only when we have reached a
- * suitable place to restart if a suspension occurs.
- */
-
-/* Declare and initialize local copies of input pointer/count */
-#define INPUT_VARS(cinfo)  \
-	struct jpeg_source_mgr * datasrc = (cinfo)->src;  \
-	const JOCTET * next_input_byte = datasrc->next_input_byte;  \
-	size_t bytes_in_buffer = datasrc->bytes_in_buffer;  \
-	long idx = datasrc->idx
-
-/* Unload the local copies --- do this only at a restart boundary */
-#define INPUT_SYNC(cinfo)  \
-	( datasrc->next_input_byte = next_input_byte,  \
-	  datasrc->bytes_in_buffer = bytes_in_buffer,	\
-	  datasrc->idx = idx	)
-
-/* Reload the local copies --- used only in MAKE_BYTE_AVAIL */
-#define INPUT_RELOAD(cinfo)  \
-	( next_input_byte = datasrc->next_input_byte,  \
-	  bytes_in_buffer = datasrc->bytes_in_buffer,	\
-	  idx = datasrc->idx	)
-
-/* Internal macro for INPUT_BYTE and INPUT_2BYTES: make a byte available.
- * Note we do *not* do INPUT_SYNC before calling fill_input_buffer,
- * but we must reload the local copies after a successful fill.
- */
-#define MAKE_BYTE_AVAIL(cinfo,action)  \
-	if (bytes_in_buffer == 0) {  \
-	  if (! (*datasrc->fill_input_buffer) (cinfo))  \
-	    { action; }  \
-	  INPUT_RELOAD(cinfo);  \
-	}
-
-/* Read a byte into variable V.
- * If must suspend, take the specified action (typically "return FALSE").
- */
-#define INPUT_BYTE(cinfo,V,action)  \
-	MAKESTMT( MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V = GETJOCTET(*next_input_byte++); )
-
-/* Read two bytes interpreted as an unsigned 16-bit integer.
- * V should be declared UINT16
- */
-#define INPUT_2BYTES(cinfo,V,action)  \
-	MAKESTMT( MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V = ((unsigned int) GETJOCTET(*next_input_byte++)) << 8; \
-		  MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V += ((unsigned int) GETJOCTET(*next_input_byte++)) << 0; )
-      
-/* As above, but read two bytes interpreted as an unsigned 16-bit
- * integer in little endian format. V should be declared UINT16.
- */
-#define INPUT_2BYTES_LE(cinfo,V,action)  \
-	MAKESTMT( MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V = ((unsigned int) GETJOCTET(*next_input_byte++)) << 0; \
-		  MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V += ((unsigned int) GETJOCTET(*next_input_byte++)) << 8; )
-      
-/* Read four bytes interpreted as an unsigned 32-bit integer.
- * V should be declared UINT32
- */
-#define INPUT_4BYTES(cinfo,V,action)  \
-	MAKESTMT( MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V = ((UINT32) GETJOCTET(*next_input_byte++)) << 24; \
-		  MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 16; \
-		  MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 8;  \
-		  MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 0; )
-      
-/* As above, but read four bytes interpreted as an unsigned 32-bit
- * integer in little endian format. V should be declared UINT32
- */
-#define INPUT_4BYTES_LE(cinfo,V,action)  \
-	MAKESTMT( MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V = ((UINT32) GETJOCTET(*next_input_byte++))  << 0; \
-		  MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 8; \
-		  MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 16;  \
-		  MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 24; )
-
-/*
- * Process an IFD entry. This will involve seeking and reading from the
- * stream if num_elements * element_size (determined by element_type)
- * is larger than 4 bytes.
+ * Cycle through and read IFD entries. Often this is just reading values
+ * into fields of the directory object. Sometimes this involves seeking and
+ * reading from the stream if num_elements * element_size (determined by
+ * element_type) is larger than 4 bytes. This occurs at least once, for
+ * pixel_format. This means that there is no guaruantee of where the
+ * read head will be after this operation.
  *  
  */          
-LOCAL(boolean)
-process_ifd (j_dir_ptr dinfo, ifd_entry* ifde)
+GLOBAL(boolean)
+jpegxr_dir_read_ifd_entries (j_dir_ptr dinfo)
 {
   UINT8 c;
   UINT16 c2;
   UINT32 c4;
+  ifd_entry * ifde;
   
   INPUT_VARS(dinfo);
   
-  switch (ifde->field_tag) {
-    case JFIELDTAG_PIXEL_FORMAT:
-      /* Always 16 elements so have to read from stream */
-      /* Seek to correct offset */
-      (*dinfo->src->seek_input_data) (dinfo, (long) ifde->values_or_offset);
-      INPUT_RELOAD(dinfo);
-      /* Size depends on type */
-      switch (ifde->element_type) {
-	case (JELEMTYPE_BYTE):
-	  for (int i=0; i<16; i++) {
-	    INPUT_BYTE(dinfo,c,return FALSE);
-	    dinfo->pixel_format[i] = c;
-	  }
-	  break;
-	default :
-	  /* TODO - some kind of error here */
-	  break;
-      }
-      break;
-    case JFIELDTAG_IMAGE_WIDTH:
-      dinfo->image_width = ifde->values_or_offset;
-      break;
-    case JFIELDTAG_IMAGE_HEIGHT:
-      dinfo->image_height = ifde->values_or_offset;
-      break;
-    case JFIELDTAG_IMAGE_OFFSET:
-      dinfo->image_offset = ifde->values_or_offset;
-      break;
-    case JFIELDTAG_IMAGE_BYTE_COUNT:
-      dinfo->image_byte_count = ifde->values_or_offset;
-      break;
-    default :
-      /* TODO - output some message if not supported? */
-      break;
+  /* For each entry we found */
+  for (int i=0; i < dinfo->num_entries; i++) {
+
+    ifde = dinfo->ifd_entry_list[i];
+    
+    /* Currently we only support the 5 mandatory fields */
+    switch (ifde->field_tag) {
+      case JFIELDTAG_PIXEL_FORMAT:
+	/* Always 16 elements so have to read from stream */
+	/* Seek to correct offset */
+	(*dinfo->src->seek_input_data) (dinfo, (long) ifde->values_or_offset);
+	INPUT_RELOAD(dinfo);
+	/* Size depends on type */
+	switch (ifde->element_type) {
+	  case (JELEMTYPE_BYTE):
+	    for (int i=0; i<16; i++) {
+	      INPUT_BYTE(dinfo,c,return FALSE);
+	      dinfo->pixel_format[i] = c;
+	    }
+	    break;
+	  default :
+	    /* TODO - some kind of error here */
+	    break;
+	}
+	break;
+      case JFIELDTAG_IMAGE_WIDTH:
+	dinfo->image_width = ifde->values_or_offset;
+	break;
+      case JFIELDTAG_IMAGE_HEIGHT:
+	dinfo->image_height = ifde->values_or_offset;
+	break;
+      case JFIELDTAG_IMAGE_OFFSET:
+	dinfo->image_offset = ifde->values_or_offset;
+	break;
+      case JFIELDTAG_IMAGE_BYTE_COUNT:
+	dinfo->image_byte_count = ifde->values_or_offset;
+	break;
+      default :
+	/* TODO - output some message if not supported? */
+	break;
+    }
   }
   
   INPUT_SYNC(dinfo);
@@ -188,11 +87,57 @@ process_ifd (j_dir_ptr dinfo, ifd_entry* ifde)
 
 
 /*
- * Parse image directory header.
+ * Read a JPEG-XR directory to obtain headers and decompression
+ * parameters. This reads directory, image, tile and macroblock layer 
+ * information. The source data should be at the start of the directory
+ * header.
+ *
+ */
+GLOBAL(int)
+jpegxr_dir_read_metadata (j_dir_ptr dinfo)
+{
+  int retcode;
+
+  /* Parse the directory header */
+  retcode = jpegxr_dir_read_header(dinfo);
+  
+  /* Process each IFD entry */
+  /* This will involve seeking and reading from the stream at least
+   * once. After this operation, there is no guarantee of the position
+   * of the read head in the source input. */
+  jpegxr_dir_read_ifd_entries(dinfo);
+  
+  /* Skip forward to the coded image */
+  (*dinfo->src->seek_input_data) (dinfo, (long) dinfo->image_offset); 
+  
+  /* Create a coded image object*/
+  /* TODO - currently we support a single coded image. Some directories
+   * will contain a second coded image containing the alpha plane.
+   * Possibly even more coded images can be contained within a
+   * directory, I don't think so though. TODO - verify this. */
+  struct jpegxr_image_struct iinfo;
+  dinfo->image = &iinfo;
+  
+  /* Initialize the JPEG-XR code image object */
+  dinfo->image->err = dinfo->err;
+  jpegxr_image_create_decompress(&iinfo); // has its own mem. manager
+  dinfo->image->progress = dinfo->progress;
+  dinfo->image->src = dinfo->src;
+  
+  /* Read the coded image header */
+  jpegxr_image_read_header(&iinfo);
+  
+  return retcode;
+}
+
+
+/*
+ * Read only directory header from the source data.
+ * The source data should be at the start of the directory header.
  *  
  */          
 GLOBAL(int)
-jpegxr_dir_parse_header (j_dir_ptr dinfo)
+jpegxr_dir_read_header (j_dir_ptr dinfo)
 {
   UINT8 c;
   UINT16 c2;
@@ -236,11 +181,6 @@ jpegxr_dir_parse_header (j_dir_ptr dinfo)
   dinfo->zero_or_next_ifd_offset = c4;
   
   INPUT_SYNC(dinfo);
-  
-  /* Process each IFD entry */
-  for (int i=0; i < dinfo->num_entries; i++) {
-    process_ifd(dinfo, dinfo->ifd_entry_list[i]);
-  }
   
   /* TODO return correct code */
   return JPEG_REACHED_SOS;

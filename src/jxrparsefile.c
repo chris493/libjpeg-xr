@@ -14,133 +14,117 @@
 #include "jinclude.h"
 #include "jpegxrlib.h"
 
+/* Data read macros */
+#include "jxrdatard.h"
+
 
 /*
- * Macros for fetching data from the data source module.
+ * Read JPEG-XR file to obtain headers and decompression parameters.
+ * This reads file, directory, image, tile and macroblock layer 
+ * information. Need only initialize JPEG object and supply a data source
+ * before calling.
  *
- * At all times, cinfo->src->next_input_byte and ->bytes_in_buffer reflect
- * the current restart point; we update them only when we have reached a
- * suitable place to restart if a suspension occurs.
  */
+GLOBAL(int)
+jpegxr_file_read_metadata (j_file_ptr finfo)
+{
+  // TODO sort out error handling etc.
+  int retcode = JPEG_REACHED_SOS;
 
-/* Declare and initialize local copies of input pointer/count */
-#define INPUT_VARS(cinfo)  \
-	struct jpeg_source_mgr * datasrc = (cinfo)->src;  \
-	const JOCTET * next_input_byte = datasrc->next_input_byte;  \
-	size_t bytes_in_buffer = datasrc->bytes_in_buffer;  \
-	long idx = datasrc->idx
+  /* Check we are in the correct state. TODO - more states, e.g. in file
+   * header state, directory header state etc. */
+  if (finfo->global_state != DSTATE_START &&
+      finfo->global_state != DSTATE_INHEADER)
+    ERREXIT1(finfo, JERR_BAD_STATE, finfo->global_state);
 
-/* Unload the local copies --- do this only at a restart boundary */
-#define INPUT_SYNC(cinfo)  \
-	( datasrc->next_input_byte = next_input_byte,  \
-	  datasrc->bytes_in_buffer = bytes_in_buffer,	\
-	  datasrc->idx = idx	)
+  /* Parse the file header */
+  jpegxr_file_read_header(finfo);
+  
+  /* Skip forward to the first directory */
+  (*finfo->src->seek_input_data) (finfo, (long) finfo->first_ifd_offset); 
+  
+  /* Create file directory object */
+  /* These are stored in a linked list throughout the codestream.
+   * Currently we only support one (the first) directory. Further
+   * directories are ignored. */
+  finfo->num_dirs = 1;
+  // list of dirs
+  j_dir_ptr dirs[finfo->num_dirs];
+  struct jpegxr_dir_struct dinfo;
+  dirs[0] = &dinfo;
+  finfo->dirs = dirs;
+  
+  /* Initialize the JPEG-XR directory decompression object */
+  finfo->dirs[0]->err = finfo->err;
+  jpegxr_dir_create_decompress(&dinfo); // has its own mem. manager
+  finfo->dirs[0]->progress = finfo->progress;
+  finfo->dirs[0]->src = finfo->src;
 
-/* Reload the local copies --- used only in MAKE_BYTE_AVAIL */
-#define INPUT_RELOAD(cinfo)  \
-	( next_input_byte = datasrc->next_input_byte,  \
-	  bytes_in_buffer = datasrc->bytes_in_buffer,	\
-	  idx = datasrc->idx	)
+  /* Read the directory header */
+  jpegxr_dir_read_metadata(&dinfo);
 
-/* Internal macro for INPUT_BYTE and INPUT_2BYTES: make a byte available.
- * Note we do *not* do INPUT_SYNC before calling fill_input_buffer,
- * but we must reload the local copies after a successful fill.
- */
-#define MAKE_BYTE_AVAIL(cinfo,action)  \
-	if (bytes_in_buffer == 0) {  \
-	  if (! (*datasrc->fill_input_buffer) (cinfo))  \
-	    { action; }  \
-	  INPUT_RELOAD(cinfo);  \
-	}
 
-/* Read a byte into variable V.
- * If must suspend, take the specified action (typically "return FALSE").
- */
-#define INPUT_BYTE(cinfo,V,action)  \
-	MAKESTMT( MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V = GETJOCTET(*next_input_byte++); )
+  fprintf(stdout, "File header\n");
+  fprintf(stdout, "fixed_file_header_ii_2bytes : %x\n", finfo->fixed_file_header_ii_2bytes);
+  fprintf(stdout, "fixed_file_header_0xbc_byte : %x\n", finfo->fixed_file_header_0xbc_byte);
+  fprintf(stdout, "file_version_id : %x\n", finfo->file_version_id);
+  fprintf(stdout, "first_ifd_offset : %x\n\n", finfo->first_ifd_offset);
+  
+  fprintf(stdout, "Directory\n");
+  fprintf(stdout, "num_entries: %x\n", finfo->dirs[0]->num_entries );
+  fprintf(stdout, "zero_or_next_ifd_offset: %x\n\n", finfo->dirs[0]->zero_or_next_ifd_offset);
 
-/* Read two bytes interpreted as an unsigned 16-bit integer.
- * V should be declared UINT16
- */
-#define INPUT_2BYTES(cinfo,V,action)  \
-	MAKESTMT( MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V = ((unsigned int) GETJOCTET(*next_input_byte++)) << 8; \
-		  MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V += ((unsigned int) GETJOCTET(*next_input_byte++)) << 0; )
-      
-/* As above, but read two bytes interpreted as an unsigned 16-bit
- * integer in little endian format. V should be declared UINT16.
- */
-#define INPUT_2BYTES_LE(cinfo,V,action)  \
-	MAKESTMT( MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V = ((unsigned int) GETJOCTET(*next_input_byte++)) << 0; \
-		  MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V += ((unsigned int) GETJOCTET(*next_input_byte++)) << 8; )
-      
-/* Read four bytes interpreted as an unsigned 32-bit integer.
- * V should be declared UINT32
- */
-#define INPUT_4BYTES(cinfo,V,action)  \
-	MAKESTMT( MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V = ((UINT32) GETJOCTET(*next_input_byte++)) << 24; \
-		  MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 16; \
-		  MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 8;  \
-		  MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 0; )
-      
-/* As above, but read four bytes interpreted as an unsigned 32-bit
- * integer in little endian format. V should be declared UINT32
- */
-#define INPUT_4BYTES_LE(cinfo,V,action)  \
-	MAKESTMT( MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V = ((UINT32) GETJOCTET(*next_input_byte++))  << 0; \
-		  MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 8; \
-		  MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 16;  \
-		  MAKE_BYTE_AVAIL(cinfo,action); \
-		  bytes_in_buffer--; \
-		  idx++; \
-		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 24; )
+  for (int i=0; i< finfo->dirs[0]->num_entries; i++ ) {
+    fprintf(stdout, "IFD entry %d\n", i);
+    fprintf(stdout, "field_tag : %x\n",         finfo->dirs[0]->ifd_entry_list[i]->field_tag);
+    fprintf(stdout, "element_type : %x\n",      finfo->dirs[0]->ifd_entry_list[i]->element_type);
+    fprintf(stdout, "num_elements : %x\n",      finfo->dirs[0]->ifd_entry_list[i]->num_elements);
+    fprintf(stdout, "values_or_offset : %x\n\n",  finfo->dirs[0]->ifd_entry_list[i]->values_or_offset);
+  }
+
+  fprintf(stdout, "Supported IFD entry values\n");
+  for (int i=0; i<16; i++) 
+    fprintf(stdout, "pixel format: %x\n", finfo->dirs[0]->pixel_format[i] );
+  fprintf(stdout, "image_width: %x\n", finfo->dirs[0]->image_width );
+  fprintf(stdout, "image_height: %x\n", finfo->dirs[0]->image_height );
+  fprintf(stdout, "image_offset: %x\n", finfo->dirs[0]->image_offset );
+  fprintf(stdout, "image_byte_count: %x\n", finfo->dirs[0]->image_byte_count );
+  
+
+    
+  
+  /* TODO - what new return codes are needed? */
+  switch (retcode) {
+  case JPEG_REACHED_SOS:
+    retcode = JPEG_HEADER_OK;
+    break;
+  case JPEG_REACHED_EOI:
+    /* Reset to start state; it would be safer to require the application to
+     * call jpeg_abort, but we can't change it now for compatibility reasons.
+     * A side effect is to free any temporary memory (there shouldn't be any).
+     */
+    //jpeg_abort((j_common_ptr) finfo); /* sets state = DSTATE_START */
+    retcode = JPEG_HEADER_TABLES_ONLY;
+    break;
+  case JPEG_SUSPENDED:
+    /* no work */
+    break;
+  }
+
+  return retcode;
+}
+
 
 /*
- * Parse image file header and skip to the first directory.
+ * Read only the file header at the begining of a file input data source.
  *  
  */          
 GLOBAL(int)
-jpegxr_file_parse_header (j_file_ptr finfo)
+jpegxr_file_read_header (j_file_ptr finfo)
 {
   UINT8 c;
   UINT16 c2;
   UINT32 c4;
-  
   
   INPUT_VARS(finfo);  
   
@@ -154,10 +138,6 @@ jpegxr_file_parse_header (j_file_ptr finfo)
   /* Offset is stored in little endian format */
   INPUT_4BYTES_LE(finfo, c4, return FALSE);
   finfo->first_ifd_offset = c4;
-  
-  /* Seek to the directory */
-  INPUT_SYNC(finfo);
-  (*finfo->src->seek_input_data) (finfo, (long) finfo->first_ifd_offset);   
   
   /* TODO return correct code */
   return JPEG_REACHED_SOS;

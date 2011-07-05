@@ -17,22 +17,40 @@
 #include "jinclude.h"
 #include "jpegxrlib.h"
 
+/*
+ * Common initialisation routines for all JPEG-XR decompression objects.
+ * The error manager must already be set up (in case memory manager fails).
+ */
+LOCAL(void)
+common_initialisation (j_common_ptr cinfo)
+{
+  /* Initialize a memory manager instance for this object */
+  jinit_memory_mgr((j_common_ptr) cinfo);
+
+  /* Zero out pointers to permanent structures. */
+  cinfo->progress = NULL;
+  cinfo->src = NULL;
+
+  /* OK, I'm ready */
+  cinfo->global_state = DSTATE_START;
+}
+
 
 /*
  * Initialization of a JPEG file decompression object.
  * The error manager must already be set up (in case memory manager fails).
  */
 GLOBAL(void)
-jpegxr_file_CreateDecompress (j_file_ptr cinfo, int version, size_t structsize)
+jpegxr_file_CreateDecompress (j_file_ptr finfo, int version, size_t structsize)
 {
   int i;
 
   /* Guard against version mismatches between library and caller. */
-  cinfo->mem = NULL;		/* so jpegxr_file_destroy knows mem mgr not called */
+  finfo->mem = NULL;		/* so jpegxr_file_destroy knows mem mgr not called */
   if (version != JPEGXR_LIB_VERSION)
-    ERREXIT2(cinfo, JERR_BAD_LIB_VERSION, JPEGXR_LIB_VERSION, version);
+    ERREXIT2(finfo, JERR_BAD_LIB_VERSION, JPEGXR_LIB_VERSION, version);
   if (structsize != SIZEOF(struct jpegxr_file_struct))
-    ERREXIT2(cinfo, JERR_BAD_STRUCT_SIZE, 
+    ERREXIT2(finfo, JERR_BAD_STRUCT_SIZE, 
 	     (int) SIZEOF(struct jpegxr_file_struct), (int) structsize);
 
   /* For debugging purposes, we zero the whole master structure.
@@ -42,39 +60,33 @@ jpegxr_file_CreateDecompress (j_file_ptr cinfo, int version, size_t structsize)
    * complain here.
    */
   {
-    struct jpeg_error_mgr * err = cinfo->err;
-    void * client_data = cinfo->client_data; /* ignore Purify complaint here */
-    MEMZERO(cinfo, SIZEOF(struct jpegxr_file_struct));
-    cinfo->err = err;
-    cinfo->client_data = client_data;
+    struct jpeg_error_mgr * err = finfo->err;
+    void * client_data = finfo->client_data; /* ignore Purify complaint here */
+    MEMZERO(finfo, SIZEOF(struct jpegxr_file_struct));
+    finfo->err = err;
+    finfo->client_data = client_data;
   }
 
-  /* Initialize a memory manager instance for this object */
-  jinit_memory_mgr((j_common_ptr) cinfo);
-
-  /* Zero out pointers to permanent structures. */
-  cinfo->progress = NULL;
-  cinfo->src = NULL;
-
-  /* OK, I'm ready */
-  cinfo->global_state = DSTATE_START;
+  /* Common to all three objects */
+  common_initialisation( (j_common_ptr) finfo );
 }
+
 
 /*
  * Initialization of a JPEG directory decompression object.
  * The error manager must already be set up (in case memory manager fails).
  */
 GLOBAL(void)
-jpegxr_dir_CreateDecompress (j_dir_ptr cinfo, int version, size_t structsize)
+jpegxr_dir_CreateDecompress (j_dir_ptr dinfo, int version, size_t structsize)
 {
   int i;
 
   /* Guard against version mismatches between library and caller. */
-  cinfo->mem = NULL;		/* so jpegxr_dir_destroy knows mem mgr not called */
+  dinfo->mem = NULL;		/* so jpegxr_dir_destroy knows mem mgr not called */
   if (version != JPEGXR_LIB_VERSION)
-    ERREXIT2(cinfo, JERR_BAD_LIB_VERSION, JPEGXR_LIB_VERSION, version);
+    ERREXIT2(dinfo, JERR_BAD_LIB_VERSION, JPEGXR_LIB_VERSION, version);
   if (structsize != SIZEOF(struct jpegxr_dir_struct))
-    ERREXIT2(cinfo, JERR_BAD_STRUCT_SIZE, 
+    ERREXIT2(dinfo, JERR_BAD_STRUCT_SIZE, 
 	     (int) SIZEOF(struct jpegxr_dir_struct), (int) structsize);
 
   /* For debugging purposes, we zero the whole master structure.
@@ -84,140 +96,53 @@ jpegxr_dir_CreateDecompress (j_dir_ptr cinfo, int version, size_t structsize)
    * complain here.
    */
   {
-    struct jpeg_error_mgr * err = cinfo->err;
-    void * client_data = cinfo->client_data; /* ignore Purify complaint here */
-    MEMZERO(cinfo, SIZEOF(struct jpegxr_dir_struct));
-    cinfo->err = err;
-    cinfo->client_data = client_data;
+    struct jpeg_error_mgr * err = dinfo->err;
+    void * client_data = dinfo->client_data; /* ignore Purify complaint here */
+    MEMZERO(dinfo, SIZEOF(struct jpegxr_dir_struct));
+    dinfo->err = err;
+    dinfo->client_data = client_data;
   }
 
-  /* Initialize a memory manager instance for this object */
-  jinit_memory_mgr((j_common_ptr) cinfo);
-
-  /* Zero out pointers to permanent structures. */
-  cinfo->progress = NULL;
-  cinfo->src = NULL;
-
-  /* OK, I'm ready */
-  cinfo->global_state = DSTATE_START;
+  /* Common to all three objects */
+  common_initialisation( (j_common_ptr) dinfo );
 }
+
 
 /*
- * Read JPEG-XR file to obtain headers and decompression parameters.
- * This reads file, directory, image, tile and macroblock layer 
- * information. Need only initialize JPEG object and supply a data source
- * before calling.
- *
+ * Initialization of a JPEG image decompression object.
+ * The error manager must already be set up (in case memory manager fails).
  */
-GLOBAL(int)
-jpegxr_file_read_header (j_file_ptr finfo)
+GLOBAL(void)
+jpegxr_image_CreateDecompress (j_image_ptr iinfo, int version, size_t structsize)
 {
-  int retcode;
+  int i;
 
-  /* Check we are in the correct state. TODO - more states, e.g. in file
-   * header state, directory header state etc. */
-  if (finfo->global_state != DSTATE_START &&
-      finfo->global_state != DSTATE_INHEADER)
-    ERREXIT1(finfo, JERR_BAD_STATE, finfo->global_state);
+  /* Guard against version mismatches between library and caller. */
+  iinfo->mem = NULL;		/* so jpegxr_image_destroy knows mem mgr not called */
+  if (version != JPEGXR_LIB_VERSION)
+    ERREXIT2(iinfo, JERR_BAD_LIB_VERSION, JPEGXR_LIB_VERSION, version);
+  if (structsize != SIZEOF(struct jpegxr_image_struct))
+    ERREXIT2(iinfo, JERR_BAD_STRUCT_SIZE, 
+	     (int) SIZEOF(struct jpegxr_image_struct), (int) structsize);
 
-  /* Parse the file header */
-  /* This also skips forward to the first directory */
-  retcode = jpegxr_file_parse_header(finfo);
-  
-  /* Create file directory object */
-  /* These are stored in a linked list throughout the codestream.
-   * Currently we only support one (the first) directory. Further
-   * directories are ignored. */
-  finfo->num_dirs = 1;
-  // list of dirs
-  j_dir_ptr dirs[finfo->num_dirs];
-  struct jpegxr_dir_struct dinfo;
-  dirs[0] = &dinfo;
-  finfo->dirs = dirs;
-  
-  /* Initialize the JPEG-XR directory decompression object */
-  finfo->dirs[0]->err = finfo->err;
-  jpegxr_dir_create_decompress(&dinfo); // has its own mem. manager
-  finfo->dirs[0]->progress = finfo->progress;
-  finfo->dirs[0]->src = finfo->src;
-
-  /* Read the directory header */
-  retcode = jpegxr_dir_parse_header(&dinfo);
-
-
-  fprintf(stdout, "File header\n");
-  fprintf(stdout, "fixed_file_header_ii_2bytes : %x\n", finfo->fixed_file_header_ii_2bytes);
-  fprintf(stdout, "fixed_file_header_0xbc_byte : %x\n", finfo->fixed_file_header_0xbc_byte);
-  fprintf(stdout, "file_version_id : %x\n", finfo->file_version_id);
-  fprintf(stdout, "first_ifd_offset : %x\n\n", finfo->first_ifd_offset);
-  
-  fprintf(stdout, "Directory\n");
-  fprintf(stdout, "num_entries: %x\n", finfo->dirs[0]->num_entries );
-  fprintf(stdout, "zero_or_next_ifd_offset: %x\n\n", finfo->dirs[0]->zero_or_next_ifd_offset);
-
-  for (int i=0; i< finfo->dirs[0]->num_entries; i++ ) {
-    fprintf(stdout, "IFD entry %d\n", i);
-    fprintf(stdout, "field_tag : %x\n",         finfo->dirs[0]->ifd_entry_list[i]->field_tag);
-    fprintf(stdout, "element_type : %x\n",      finfo->dirs[0]->ifd_entry_list[i]->element_type);
-    fprintf(stdout, "num_elements : %x\n",      finfo->dirs[0]->ifd_entry_list[i]->num_elements);
-    fprintf(stdout, "values_or_offset : %x\n\n",  finfo->dirs[0]->ifd_entry_list[i]->values_or_offset);
+  /* For debugging purposes, we zero the whole master structure.
+   * But the application has already set the err pointer, and may have set
+   * client_data, so we have to save and restore those fields.
+   * Note: if application hasn't set client_data, tools like Purify may
+   * complain here.
+   */
+  {
+    struct jpeg_error_mgr * err = iinfo->err;
+    void * client_data = iinfo->client_data; /* ignore Purify complaint here */
+    MEMZERO(iinfo, SIZEOF(struct jpegxr_image_struct));
+    iinfo->err = err;
+    iinfo->client_data = client_data;
   }
 
-  fprintf(stdout, "Supported IFD entry values\n");
-  for (int i=0; i<16; i++) 
-    fprintf(stdout, "pixel format: %x\n", finfo->dirs[0]->pixel_format[i] );
-  fprintf(stdout, "image_width: %x\n", finfo->dirs[0]->image_width );
-  fprintf(stdout, "image_height: %x\n", finfo->dirs[0]->image_height );
-  fprintf(stdout, "image_offset: %x\n", finfo->dirs[0]->image_offset );
-  fprintf(stdout, "image_byte_count: %x\n", finfo->dirs[0]->image_byte_count );
-  
-
-    
-  
-  /* TODO - what new return codes are needed? */
-  switch (retcode) {
-  case JPEG_REACHED_SOS:
-    retcode = JPEG_HEADER_OK;
-    break;
-  case JPEG_REACHED_EOI:
-    /* Reset to start state; it would be safer to require the application to
-     * call jpeg_abort, but we can't change it now for compatibility reasons.
-     * A side effect is to free any temporary memory (there shouldn't be any).
-     */
-    //jpeg_abort((j_common_ptr) finfo); /* sets state = DSTATE_START */
-    retcode = JPEG_HEADER_TABLES_ONLY;
-    break;
-  case JPEG_SUSPENDED:
-    /* no work */
-    break;
-  }
-
-  return retcode;
+  /* Common to all three objects */
+  common_initialisation( (j_common_ptr) iinfo );
 }
 
-/*
- * Read a JPEG-XR directory to obtain headers and decompression
- * parameters. This reads directory, image, tile and macroblock layer 
- * information. Need only initialize JPEG object and supply a data source
- * before calling.
- *
- */
-GLOBAL(int)
-jpegxr_dir_read_header (j_dir_ptr dinfo)
-{
-  int retcode;
-
-  /* Check we are in the correct state. TODO - more states, e.g. in file
-   * header state, directory header state etc. */
-  if (dinfo->global_state != DSTATE_START &&
-      dinfo->global_state != DSTATE_INHEADER)
-    ERREXIT1(dinfo, JERR_BAD_STATE, dinfo->global_state);
-
-  /* Parse the directory header */
-  retcode = jpegxr_dir_parse_header(dinfo);
-  
-  return retcode;
-}
 
 
 /*
@@ -228,6 +153,23 @@ jpegxr_file_destroy (j_file_ptr finfo)
 {
   jpegxr_destroy((j_common_ptr) finfo); /* use common routine */
 }
+/*
+ * Destruction of a JPEG-XR directory decompression object
+ */
+GLOBAL(void)
+jpegxr_dir_destroy (j_dir_ptr finfo)
+{
+  jpegxr_destroy((j_common_ptr) finfo); /* use common routine */
+}
+/*
+ * Destruction of a JPEG-XR image decompression object
+ */
+GLOBAL(void)
+jpegxr_image_destroy (j_image_ptr finfo)
+{
+  jpegxr_destroy((j_common_ptr) finfo); /* use common routine */
+}
+
 
 /*
  * Destruction of a JPEG-XR object.
