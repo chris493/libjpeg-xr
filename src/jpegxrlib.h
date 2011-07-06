@@ -56,7 +56,12 @@
 #define D_MAX_BLOCKS_IN_MCU   10 /* decompressor's limit on blocks per MCU */
 #endif
 
-
+/* Constants for JPEG-XR */
+/* Fixed length prefix for a .jxr file */
+#define JXR_FIXED_FILE_HEADER_2BYTE  0x4949
+#define JXR_FIXED_FILE_HEADER_1BYTE  0xBC
+#define JXR_FILE_VERSION  1
+#define JXR_MIN_NUM_IFD_ENTRIES  5
 
 /* Data structures for images (arrays of samples and of DCT coefficients).
  * On 80x86 machines, the image arrays are too big for near pointers,
@@ -429,7 +434,7 @@ typedef enum {
 } JXR_FIELD_TAG;
 
 typedef enum {
-      JELEMTYPE_BYTE = 1,
+      JELEMTYPE_BYTE=1,
       JELEMTYPE_UTF8,
       JELEMTYPE_USHORT,
       JELEMTYPE_ULONG,
@@ -494,9 +499,8 @@ struct jpegxr_dir_struct {
 struct jpegxr_file_struct {
   jpegxr_common_fields;	/* Fields shared with jpegxr_compress_struct */
   
-  /* File header */
-  UINT16 fixed_file_header_ii_2bytes;
-  UINT8 fixed_file_header_0xbc_byte;
+  /* File version ID */
+  /* Should be equal to (or greater than) JXR_FILE_VERSION */
   UINT8 file_version_id;
   /* Position of first image file directory, from start of file. */
   UINT32 first_ifd_offset;
@@ -525,7 +529,7 @@ struct jpeg_error_mgr {
   /* Conditionally emit a trace or warning message */
   JMETHOD(void, emit_message, (j_common_ptr cinfo, int msg_level));
   /* Routine that actually outputs a trace or error message */
-  JMETHOD(void, output_message, (j_common_ptr cinfo));
+  JMETHOD(void, output_message, (j_common_ptr cinfo, int indent_level));
   /* Format a message string for the most recent JPEG error or message */
   JMETHOD(void, format_message, (j_common_ptr cinfo, char * buffer));
 #define JMSG_LENGTH_MAX  200	/* recommended size of format_message buffer */

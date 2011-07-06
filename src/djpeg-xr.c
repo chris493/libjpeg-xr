@@ -171,7 +171,7 @@ parse_switches (j_file_ptr cinfo, int argc, char **argv,
   /* Set up default JPEG parameters. */
   requested_fmt = DEFAULT_FMT;	/* set default output file format */
   outfilename = NULL;
-  cinfo->err->trace_level = 0;
+  cinfo->err->trace_level = 4; /* for now we want debugging output*/
 
   /* Scan command line options, adjust parameters */
 
@@ -331,9 +331,6 @@ main (int argc, char **argv)
   
   /* Read file header */
   (void) jpegxr_file_read_metadata(&finfo);
-
-	/* Verify header was read succesfully */
-	fprintf(stdout, "djpeg-xr called.\n");
 
   /* Abort decompression and release memory. */
   jpegxr_file_destroy(&finfo);

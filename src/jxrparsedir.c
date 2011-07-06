@@ -19,12 +19,147 @@
 
 
 /*
+ * Read a JPEG-XR directory to obtain headers and decompression
+ * parameters. This reads directory, image, tile and macroblock layer 
+ * information. The source data should be at the start of the directory
+ * header.
+ *
+ */
+GLOBAL(int)
+jpegxr_dir_read_metadata (j_dir_ptr dinfo)
+{
+  int retcode;
+  
+  TRACEMS(dinfo,1,JXRTRC_DIR_BEGIN_META);
+  
+  /* Parse the directory header */
+  retcode = jpegxr_dir_read_header(dinfo);
+  
+  /* Process each IFD entry */
+  /* This will involve seeking and reading from the stream at least
+   * once. After this operation, there is no guarantee of the position
+   * of the read head in the source input. */
+  jpegxr_dir_read_ifd_entries(dinfo);
+  
+  /* Skip forward to the coded image */
+  (*dinfo->src->seek_input_data) (dinfo, (long) dinfo->image_offset); 
+  
+  /* Create a coded image object*/
+  /* TODO - currently we support a single coded image. Some directories
+   * will contain a second coded image containing the alpha plane.
+   * Possibly even more coded images can be contained within a
+   * directory, I don't think so though. TODO - verify this. */
+  struct jpegxr_image_struct iinfo;
+  dinfo->image = &iinfo;
+  
+  /* Initialize the JPEG-XR code image object */
+  dinfo->image->err = dinfo->err;
+  jpegxr_image_create_decompress(&iinfo); // has its own mem. manager
+  dinfo->image->progress = dinfo->progress;
+  dinfo->image->src = dinfo->src;
+  
+  /* Read the coded image header */
+  jpegxr_image_read_header(&iinfo);
+  
+  return retcode;
+}
+
+
+/*
+ * Read only directory header from the source data.
+ * The source data should be at the start of the directory header.
+ *  
+ */          
+GLOBAL(int)
+jpegxr_dir_read_header (j_dir_ptr dinfo)
+{
+  UINT8 c;
+  UINT16 c2;
+  UINT32 c4;
+  
+  TRACEMS(dinfo, 2, JXRTRC_DIR_BEGIN);
+  
+  INPUT_VARS(dinfo);
+  
+  /* Number of IFD entries the IFD contains */
+  INPUT_2BYTES_LE(dinfo, c2, return FALSE);
+  if (c2 < JXR_MIN_NUM_IFD_ENTRIES)
+    ERREXIT2(dinfo,JXRERR_TOO_FEW_IFD_ENTRIES,c2,JXR_MIN_NUM_IFD_ENTRIES);
+  TRACEMS1(dinfo, 3, JXRTRC_DIR_NUM_IFD_ENTRIES, c2);
+  dinfo->num_entries = c2;
+  
+  /* Allocate storage for list of IFD entries */
+  ifd_entry *ifde_list = (*dinfo->mem->alloc_small) (
+			      (j_common_ptr) dinfo,
+			      JPOOL_IMAGE,
+			      dinfo->num_entries * SIZEOF(ifd_entry)
+			  );
+  ifd_entry **ifde_ptr_list = (*dinfo->mem->alloc_small) (
+			      (j_common_ptr) dinfo,
+			      JPOOL_IMAGE,
+			      dinfo->num_entries * SIZEOF(ifd_entry*)
+			  );
+  dinfo->ifd_entry_list = ifde_ptr_list;
+  
+  /* Cycle through and fill out IFD entry */
+  for (unsigned int i=0; i < dinfo->num_entries; i++) {
+    
+    /* List element points to IFD ptr */
+    dinfo->ifd_entry_list[i] = &ifde_list[i];
+    
+    /* Field tag determines type of IFD entry */
+    /* We check for supported types later */
+    INPUT_2BYTES_LE(dinfo, c2, return FALSE);
+    TRACEMS2(dinfo, 3, JXRTRC_DIR_FIELD_TAG, i, c2);
+    dinfo->ifd_entry_list[i]->field_tag = c2;
+    
+    /* Element type determines length and format of elements */
+    INPUT_2BYTES_LE(dinfo, c2, return FALSE);
+    // check for reserved type
+    if (c2 < JELEMTYPE_BYTE || c2 > JELEMTYPE_DOUBLE)
+      TRACEMS2(dinfo, 0, JXRTRC_DIR_ELEM_TYPE_RESERVED, i, c2);
+    else
+      TRACEMS2(dinfo, 4, JXRTRC_DIR_ELEM_TYPE, i, c2);
+    dinfo->ifd_entry_list[i]->element_type = c2;
+    
+    /* Number of elements */
+    INPUT_4BYTES_LE(dinfo, c4, return FALSE);
+    TRACEMS2(dinfo, 4, JXRTRC_DIR_NUM_ELEMS, i, c4);
+    dinfo->ifd_entry_list[i]->num_elements = c4;
+    
+    /* Element values, or offset where they can be found */
+    /* Offset used if num_elements * sizeof(element_type) is more that
+     * 4-bytes.  */
+    INPUT_4BYTES_LE(dinfo, c4, return FALSE);
+    TRACEMS2(dinfo, 4, JXRTRC_DIR_VALUES, i, c4);
+    dinfo->ifd_entry_list[i]->values_or_offset = c4;
+  }
+  
+  /* Linked list to next directory */
+  INPUT_4BYTES_LE(dinfo, c4, return FALSE);
+  if (c4 != 0)
+    TRACEMS1(dinfo, 2, JXRTRC_DIR_NEXT_IFD, c4);
+  else
+    TRACEMS(dinfo, 2, JXRTRC_DIR_NO_MORE_IFD);
+  dinfo->zero_or_next_ifd_offset = c4;
+  
+  INPUT_SYNC(dinfo);
+  
+  /* TODO return correct code */
+  return JPEG_REACHED_SOS;
+}
+
+/*
  * Cycle through and read IFD entries. Often this is just reading values
  * into fields of the directory object. Sometimes this involves seeking and
- * reading from the stream if num_elements * element_size (determined by
- * element_type) is larger than 4 bytes. This occurs at least once, for
- * pixel_format. This means that there is no guaruantee of where the
- * read head will be after this operation.
+ * reading from the stream if num_elements * sizeof(element_type) is
+ * larger than 4 bytes. This occurs at least once, for pixel_format.
+ * This means that there is no guaruantee of where the read head will be
+ * after this operation.
+ * 
+ * Only a small subset of field value combinations are permitted according
+ * to the specification. This function should also ensure that IFD entries
+ * are valid.
  *  
  */          
 GLOBAL(boolean)
@@ -35,6 +170,8 @@ jpegxr_dir_read_ifd_entries (j_dir_ptr dinfo)
   UINT32 c4;
   ifd_entry * ifde;
   
+  TRACEMS(dinfo,2,JXRTRC_DIR_BEGIN_ENTRIES);
+    
   INPUT_VARS(dinfo);
   
   /* For each entry we found */
@@ -83,105 +220,4 @@ jpegxr_dir_read_ifd_entries (j_dir_ptr dinfo)
   INPUT_SYNC(dinfo);
   
   return TRUE;
-}
-
-
-/*
- * Read a JPEG-XR directory to obtain headers and decompression
- * parameters. This reads directory, image, tile and macroblock layer 
- * information. The source data should be at the start of the directory
- * header.
- *
- */
-GLOBAL(int)
-jpegxr_dir_read_metadata (j_dir_ptr dinfo)
-{
-  int retcode;
-
-  /* Parse the directory header */
-  retcode = jpegxr_dir_read_header(dinfo);
-  
-  /* Process each IFD entry */
-  /* This will involve seeking and reading from the stream at least
-   * once. After this operation, there is no guarantee of the position
-   * of the read head in the source input. */
-  jpegxr_dir_read_ifd_entries(dinfo);
-  
-  /* Skip forward to the coded image */
-  (*dinfo->src->seek_input_data) (dinfo, (long) dinfo->image_offset); 
-  
-  /* Create a coded image object*/
-  /* TODO - currently we support a single coded image. Some directories
-   * will contain a second coded image containing the alpha plane.
-   * Possibly even more coded images can be contained within a
-   * directory, I don't think so though. TODO - verify this. */
-  struct jpegxr_image_struct iinfo;
-  dinfo->image = &iinfo;
-  
-  /* Initialize the JPEG-XR code image object */
-  dinfo->image->err = dinfo->err;
-  jpegxr_image_create_decompress(&iinfo); // has its own mem. manager
-  dinfo->image->progress = dinfo->progress;
-  dinfo->image->src = dinfo->src;
-  
-  /* Read the coded image header */
-  jpegxr_image_read_header(&iinfo);
-  
-  return retcode;
-}
-
-
-/*
- * Read only directory header from the source data.
- * The source data should be at the start of the directory header.
- *  
- */          
-GLOBAL(int)
-jpegxr_dir_read_header (j_dir_ptr dinfo)
-{
-  UINT8 c;
-  UINT16 c2;
-  UINT32 c4;
-  
-  
-  INPUT_VARS(dinfo);  
-  
-  INPUT_2BYTES_LE(dinfo, c2, return FALSE);
-  dinfo->num_entries = c2;
-  
-  /* Allocate storage for list of IFD entries */
-  ifd_entry *ifde_list = (*dinfo->mem->alloc_small) (
-			      (j_common_ptr) dinfo,
-			      JPOOL_IMAGE,
-			      dinfo->num_entries * SIZEOF(ifd_entry)
-			  );
-  ifd_entry **ifde_ptr_list = (*dinfo->mem->alloc_small) (
-			      (j_common_ptr) dinfo,
-			      JPOOL_IMAGE,
-			      dinfo->num_entries * SIZEOF(ifd_entry*)
-			  );
-  dinfo->ifd_entry_list = ifde_ptr_list;
-  /* Cycle through and fill out IFD entry */
-  for (int i=0; i < dinfo->num_entries; i++) {
-    // list element points to IFD ptr
-    dinfo->ifd_entry_list[i] = &ifde_list[i];
-    // parse IFD entry fields
-    INPUT_2BYTES_LE(dinfo, c2, return FALSE);
-    dinfo->ifd_entry_list[i]->field_tag = c2;
-    INPUT_2BYTES_LE(dinfo, c2, return FALSE);
-    dinfo->ifd_entry_list[i]->element_type = c2;
-    INPUT_4BYTES_LE(dinfo, c4, return FALSE);
-    dinfo->ifd_entry_list[i]->num_elements = c4;
-    INPUT_4BYTES_LE(dinfo, c4, return FALSE);
-    dinfo->ifd_entry_list[i]->values_or_offset = c4;
-  }
-  
-  /* Linked list to next directory */
-  INPUT_4BYTES_LE(dinfo, c4, return FALSE);
-  dinfo->zero_or_next_ifd_offset = c4;
-  
-  INPUT_SYNC(dinfo);
-  
-  /* TODO return correct code */
-  return JPEG_REACHED_SOS;
 }

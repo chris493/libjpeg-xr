@@ -28,6 +28,8 @@
 GLOBAL(int)
 jpegxr_file_read_metadata (j_file_ptr finfo)
 {
+  TRACEMS(finfo,1,JXRTRC_FILE_BEGIN_META);
+  
   // TODO sort out error handling etc.
   int retcode = JPEG_REACHED_SOS;
 
@@ -41,12 +43,14 @@ jpegxr_file_read_metadata (j_file_ptr finfo)
   jpegxr_file_read_header(finfo);
   
   /* Skip forward to the first directory */
+  TRACEMS1(finfo,2,JXRTRC_SEEK_DIR,finfo->first_ifd_offset);
   (*finfo->src->seek_input_data) (finfo, (long) finfo->first_ifd_offset); 
   
-  /* Create file directory object */
+  /* Create directory object */
   /* These are stored in a linked list throughout the codestream.
    * Currently we only support one (the first) directory. Further
    * directories are ignored. */
+  TRACEMS(finfo,2,JXRTRC_CREATE_DIR);
   finfo->num_dirs = 1;
   // list of dirs
   j_dir_ptr dirs[finfo->num_dirs];
@@ -62,36 +66,6 @@ jpegxr_file_read_metadata (j_file_ptr finfo)
 
   /* Read the directory header */
   jpegxr_dir_read_metadata(&dinfo);
-
-
-  fprintf(stdout, "File header\n");
-  fprintf(stdout, "fixed_file_header_ii_2bytes : %x\n", finfo->fixed_file_header_ii_2bytes);
-  fprintf(stdout, "fixed_file_header_0xbc_byte : %x\n", finfo->fixed_file_header_0xbc_byte);
-  fprintf(stdout, "file_version_id : %x\n", finfo->file_version_id);
-  fprintf(stdout, "first_ifd_offset : %x\n\n", finfo->first_ifd_offset);
-  
-  fprintf(stdout, "Directory\n");
-  fprintf(stdout, "num_entries: %x\n", finfo->dirs[0]->num_entries );
-  fprintf(stdout, "zero_or_next_ifd_offset: %x\n\n", finfo->dirs[0]->zero_or_next_ifd_offset);
-
-  for (int i=0; i< finfo->dirs[0]->num_entries; i++ ) {
-    fprintf(stdout, "IFD entry %d\n", i);
-    fprintf(stdout, "field_tag : %x\n",         finfo->dirs[0]->ifd_entry_list[i]->field_tag);
-    fprintf(stdout, "element_type : %x\n",      finfo->dirs[0]->ifd_entry_list[i]->element_type);
-    fprintf(stdout, "num_elements : %x\n",      finfo->dirs[0]->ifd_entry_list[i]->num_elements);
-    fprintf(stdout, "values_or_offset : %x\n\n",  finfo->dirs[0]->ifd_entry_list[i]->values_or_offset);
-  }
-
-  fprintf(stdout, "Supported IFD entry values\n");
-  for (int i=0; i<16; i++) 
-    fprintf(stdout, "pixel format: %x\n", finfo->dirs[0]->pixel_format[i] );
-  fprintf(stdout, "image_width: %x\n", finfo->dirs[0]->image_width );
-  fprintf(stdout, "image_height: %x\n", finfo->dirs[0]->image_height );
-  fprintf(stdout, "image_offset: %x\n", finfo->dirs[0]->image_offset );
-  fprintf(stdout, "image_byte_count: %x\n", finfo->dirs[0]->image_byte_count );
-  
-
-    
   
   /* TODO - what new return codes are needed? */
   switch (retcode) {
@@ -126,17 +100,32 @@ jpegxr_file_read_header (j_file_ptr finfo)
   UINT16 c2;
   UINT32 c4;
   
-  INPUT_VARS(finfo);  
+  TRACEMS(finfo,2,JXRTRC_FILE_BEGIN);
   
-  /* Parse file parameters */
-  INPUT_2BYTES(finfo, c2, return FALSE); 
-  finfo->fixed_file_header_ii_2bytes = c2;
+  INPUT_VARS(finfo);
+  
+  /* Parse fixed length file prefix */
+  INPUT_2BYTES(finfo, c2, return FALSE);
   INPUT_BYTE(finfo, c, return FALSE);
-  finfo->fixed_file_header_0xbc_byte = c;
+  /* check this looks like a .jxr file */
+  if (c2 != JXR_FIXED_FILE_HEADER_2BYTE || c != JXR_FIXED_FILE_HEADER_1BYTE )
+    ERREXIT4(	finfo, JXRERR_FILE_HEADER,
+		c2, c, JXR_FIXED_FILE_HEADER_2BYTE, JXR_FIXED_FILE_HEADER_1BYTE);   
+  TRACEMS2(finfo,3,JXRTRC_FILE_HEADER, c2, c);
+  
+  /* Parse file version ID */
   INPUT_BYTE(finfo, c, return FALSE);
+  /* check version matches with this library */
+  if (c != JXR_FILE_VERSION)
+    TRACEMS2(finfo,0,JXRTRC_FILE_VERSION_DIFF, c, JXR_FILE_VERSION);
+  else
+    TRACEMS1(finfo,3,JXRTRC_FILE_VERSION_MATCH, c);
   finfo->file_version_id = c;
-  /* Offset is stored in little endian format */
+    
+  /* Parse offset of first directory */
+  /* Stored in little endian format. */
   INPUT_4BYTES_LE(finfo, c4, return FALSE);
+  TRACEMS1(finfo,2,JXRTRC_FILE_OFFSET, c4);
   finfo->first_ifd_offset = c4;
   
   /* TODO return correct code */

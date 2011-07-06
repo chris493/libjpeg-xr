@@ -70,7 +70,7 @@ METHODDEF(void)
 error_exit (j_common_ptr cinfo)
 {
   /* Always display the message */
-  (*cinfo->err->output_message) (cinfo);
+  (*cinfo->err->output_message) (cinfo,0);
 
   /* Let the memory manager delete any temp files before we die */
   jpegxr_destroy(cinfo);
@@ -92,10 +92,13 @@ error_exit (j_common_ptr cinfo)
  * NOTE: to use the library in an environment that doesn't support the
  * C stdio library, you may have to delete the call to fprintf() entirely,
  * not just not use this routine.
+ * 
+ * Addition for JPEG-XR: this function now also accepts an indentation
+ * level to more clearly view verbose traces.
  */
 
 METHODDEF(void)
-output_message (j_common_ptr cinfo)
+output_message (j_common_ptr cinfo, int indent_level)
 {
   char buffer[JMSG_LENGTH_MAX];
 
@@ -107,8 +110,14 @@ output_message (j_common_ptr cinfo)
   MessageBox(GetActiveWindow(), buffer, "JPEG Library Error",
 	     MB_OK | MB_ICONERROR);
 #else
-  /* Send it to stderr, adding a newline */
-  fprintf(stderr, "%s\n", buffer);
+  /* Send it to stderr, adding indent and a newline */
+  switch (indent_level) {
+    case (0): fprintf(stderr, "%s\n", buffer); break;
+    case (1): fprintf(stderr, "  %s\n", buffer); break;
+    case (2): fprintf(stderr, "    %s\n", buffer); break;
+    case (3): fprintf(stderr, "      %s\n", buffer); break;
+    default:  fprintf(stderr, "        %s\n", buffer); break;
+  }
 #endif
 }
 
@@ -135,13 +144,13 @@ emit_message (j_common_ptr cinfo, int msg_level)
      * unless trace_level >= 3.
      */
     if (err->num_warnings == 0 || err->trace_level >= 3)
-      (*err->output_message) (cinfo);
+      (*err->output_message) (cinfo,0);
     /* Always count warnings in num_warnings. */
     err->num_warnings++;
   } else {
     /* It's a trace message.  Show it if trace_level >= msg_level. */
     if (err->trace_level >= msg_level)
-      (*err->output_message) (cinfo);
+      (*err->output_message) (cinfo,msg_level);
   }
 }
 

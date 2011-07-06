@@ -183,6 +183,53 @@ JMESSAGE(JWRN_MUST_RESYNC,
 JMESSAGE(JWRN_NOT_SEQUENTIAL, "Invalid SOS parameters for sequential JPEG")
 JMESSAGE(JWRN_TOO_MUCH_DATA, "Application transferred too many scanlines")
 
+/* The following are JPEG-XR specific codes */
+/* Errors */
+JMESSAGE(JXRERR_FILE_HEADER,
+  "Fixed file header bytes are Ox%x and 0x%x: expecting 0x%x and 0x%x")
+JMESSAGE(JXRERR_TOO_FEW_IFD_ENTRIES,
+  "Invalid directory: only %u IFD entries, %u or more are required")
+/* Warnings */
+//JMESSAGE(JXRWRN_, "")
+/* Trace messages */
+JMESSAGE(JXRTRC_FILE_BEGIN_META, "Reading file metadata")
+JMESSAGE(JXRTRC_FILE_BEGIN, "Parsing file header")
+JMESSAGE(JXRTRC_FILE_HEADER,
+  "Found correct fixed length prefix 0x%x and 0x%x")
+JMESSAGE(JXRTRC_FILE_VERSION_MATCH,
+  "File version ID %u matches library version")
+JMESSAGE(JXRTRC_FILE_VERSION_DIFF,
+  "Caution: file version ID is %u, values greater than %u reserved for future specifications")
+JMESSAGE(JXRTRC_FILE_OFFSET, "Found first IFD offset at 0x%x")
+JMESSAGE(JXRTRC_SEEK_DIR, "Seeking to IFD at offset 0x%x")
+JMESSAGE(JXRTRC_CREATE_DIR, "Creating IFD object")
+JMESSAGE(JXRTRC_DIR_BEGIN_META, "Reading directory (IFD) metadata")
+JMESSAGE(JXRTRC_DIR_BEGIN, "Parsing IFD header")
+
+JMESSAGE(JXRTRC_DIR_NUM_IFD_ENTRIES, "Directory contains %u IFD entries")
+JMESSAGE(JXRTRC_DIR_FIELD_TAG, "IFD entry %u has field tag 0x%x")
+JMESSAGE(JXRTRC_DIR_ELEM_TYPE, "IFD entry %u has element type 0x%x")
+JMESSAGE(JXRTRC_DIR_ELEM_TYPE_RESERVED,
+  "Caution: IFD entry element type of %u is reserved for future specifications ")
+JMESSAGE(JXRTRC_DIR_NUM_ELEMS, "IFD entry %u has %u elements")
+JMESSAGE(JXRTRC_DIR_VALUES, "IFD entry %u has values or offset 0x%x")
+JMESSAGE(JXRTRC_DIR_NEXT_IFD, "Found next IFD at offset 0x%x")
+JMESSAGE(JXRTRC_DIR_NO_MORE_IFD, "No more IFDs in file")
+
+JMESSAGE(JXRTRC_DIR_BEGIN_ENTRIES, "Reading IFD entry values")
+
+/*
+
+
+  fprintf(stdout, "Supported IFD entry values\n");
+  for (int i=0; i<16; i++) 
+    fprintf(stdout, "pixel format: %x\n", finfo->dirs[0]->pixel_format[i] );
+  fprintf(stdout, "image_width: %x\n", finfo->dirs[0]->image_width );
+  fprintf(stdout, "image_height: %x\n", finfo->dirs[0]->image_height );
+  fprintf(stdout, "image_offset: %x\n", finfo->dirs[0]->image_offset );
+  fprintf(stdout, "image_byte_count: %x\n", finfo->dirs[0]->image_byte_count );
+*/
+
 #ifdef JMAKE_ENUM_LIST
 
   JMSG_LASTMSGCODE
