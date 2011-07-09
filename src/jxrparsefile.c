@@ -15,7 +15,9 @@
 #include "jpegxrlib.h"
 
 /* Data read macros */
+#ifndef JXR_DATARD_INCLUDED
 #include "jxrdatard.h"
+#endif
 
 
 /*

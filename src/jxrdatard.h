@@ -120,3 +120,8 @@
 		  bytes_in_buffer--; \
 		  idx++; \
 		  V += ((UINT32) GETJOCTET(*next_input_byte++)) << 24; )
+		  
+/* Get y bits from a byte, starting from index x */
+/* Might want to change this depending on architecture/compiler */
+#define GETBITS(c,x,y)	((((c << x) & 0xff) >> (8 - y)) & 0xff)
+

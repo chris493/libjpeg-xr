@@ -156,15 +156,16 @@ typedef unsigned long UINT32;
 /* UINT64 must hold at least the values 0..(2^64 -1) */
 typedef unsigned long long UINT64;
 
+/* INT8 must hold at least signed 8-bit values */
+typedef signed char INT8;
+
 
 /* INT16 must hold at least the values -32768..32767. */
-
 #ifndef XMD_H			/* X11/xmd.h correctly defines INT16 */
 typedef short INT16;
 #endif
 
 /* INT32 must hold at least signed 32-bit values. */
-
 #ifndef XMD_H			/* X11/xmd.h correctly defines INT32 */
 typedef long INT32;
 #endif

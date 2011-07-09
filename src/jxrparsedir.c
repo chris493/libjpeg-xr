@@ -15,8 +15,9 @@
 #include "jpegxrlib.h"
 
 /* Data read macros */
+#ifndef JXR_DATARD_INCLUDED
 #include "jxrdatard.h"
-
+#endif
 
 /*
  * Read a JPEG-XR directory to obtain headers and decompression
@@ -42,6 +43,7 @@ jpegxr_dir_read_metadata (j_dir_ptr dinfo)
   jpegxr_dir_read_ifd_entries(dinfo);
   
   /* Skip forward to the coded image */
+  TRACEMS1(dinfo,2,JXRTRC_SEEK_IMAGE,dinfo->image_offset);
   (*dinfo->src->seek_input_data) (dinfo, (long) dinfo->image_offset); 
   
   /* Create a coded image object*/
@@ -49,6 +51,7 @@ jpegxr_dir_read_metadata (j_dir_ptr dinfo)
    * will contain a second coded image containing the alpha plane.
    * Possibly even more coded images can be contained within a
    * directory, I don't think so though. TODO - verify this. */
+  TRACEMS(dinfo,2,JXRTRC_CREATE_IMAGE);
   struct jpegxr_image_struct iinfo;
   dinfo->image = &iinfo;
   
@@ -59,7 +62,7 @@ jpegxr_dir_read_metadata (j_dir_ptr dinfo)
   dinfo->image->src = dinfo->src;
   
   /* Read the coded image header */
-  jpegxr_image_read_header(&iinfo);
+  jpegxr_image_read_metadata(&iinfo);
   
   return retcode;
 }
@@ -101,6 +104,9 @@ jpegxr_dir_read_header (j_dir_ptr dinfo)
 			  );
   dinfo->ifd_entry_list = ifde_ptr_list;
   
+  /* Define string lookup functions for enums */
+  DEFINE_ENUM(JXR_FIELD_TAG,JXR_FIELD_TAG_DEF);
+  
   /* Cycle through and fill out IFD entry */
   for (unsigned int i=0; i < dinfo->num_entries; i++) {
     
@@ -110,7 +116,7 @@ jpegxr_dir_read_header (j_dir_ptr dinfo)
     /* Field tag determines type of IFD entry */
     /* We check for supported types later */
     INPUT_2BYTES_LE(dinfo, c2, return FALSE);
-    TRACEMS2(dinfo, 3, JXRTRC_DIR_FIELD_TAG, i, c2);
+    TRACEMS2(dinfo, 3, JXRTRC_DIR_FIELD_TAG, i, GetString_JXR_FIELD_TAG(c2));
     dinfo->ifd_entry_list[i]->field_tag = c2;
     
     /* Element type determines length and format of elements */
@@ -174,6 +180,9 @@ jpegxr_dir_read_ifd_entries (j_dir_ptr dinfo)
     
   INPUT_VARS(dinfo);
   
+  /* Define string lookup functions for enums */
+  DEFINE_ENUM(JXR_FIELD_TAG,JXR_FIELD_TAG_DEF);
+  
   /* For each entry we found */
   for (int i=0; i < dinfo->num_entries; i++) {
 
@@ -182,6 +191,7 @@ jpegxr_dir_read_ifd_entries (j_dir_ptr dinfo)
     /* Currently we only support the 5 mandatory fields */
     switch (ifde->field_tag) {
       case JFIELDTAG_PIXEL_FORMAT:
+	TRACEMSS(dinfo,3,JXRTRC_DIR_READ_ENTRY, GetString_JXR_FIELD_TAG(ifde->field_tag) );
 	/* Always 16 elements so have to read from stream */
 	/* Seek to correct offset */
 	(*dinfo->src->seek_input_data) (dinfo, (long) ifde->values_or_offset);
@@ -189,30 +199,36 @@ jpegxr_dir_read_ifd_entries (j_dir_ptr dinfo)
 	/* Size depends on type */
 	switch (ifde->element_type) {
 	  case (JELEMTYPE_BYTE):
-	    for (int i=0; i<16; i++) {
+	    for (int i=0; i<ifde->num_elements; i++) {
 	      INPUT_BYTE(dinfo,c,return FALSE);
+	      TRACEMS3(dinfo,4,JXRTRC_DIR_READ_ENTRY_MULTIPLE, i+1, ifde->num_elements, c);
 	      dinfo->pixel_format[i] = c;
 	    }
 	    break;
 	  default :
-	    /* TODO - some kind of error here */
+	    /* Wrong element type for pixel format, ignore IFD entry */
+	    TRACEMS1(dinfo,0,JXRTRC_DIR_IGNORE_ENTRY, ifde->element_type);
 	    break;
 	}
 	break;
       case JFIELDTAG_IMAGE_WIDTH:
+	TRACEMSS(dinfo,3,JXRTRC_DIR_READ_ENTRY, GetString_JXR_FIELD_TAG(ifde->field_tag) );
 	dinfo->image_width = ifde->values_or_offset;
 	break;
       case JFIELDTAG_IMAGE_HEIGHT:
+	TRACEMSS(dinfo,3,JXRTRC_DIR_READ_ENTRY, GetString_JXR_FIELD_TAG(ifde->field_tag) );
 	dinfo->image_height = ifde->values_or_offset;
 	break;
       case JFIELDTAG_IMAGE_OFFSET:
+	TRACEMSS(dinfo,3,JXRTRC_DIR_READ_ENTRY, GetString_JXR_FIELD_TAG(ifde->field_tag) );
 	dinfo->image_offset = ifde->values_or_offset;
 	break;
       case JFIELDTAG_IMAGE_BYTE_COUNT:
+	TRACEMSS(dinfo,3,JXRTRC_DIR_READ_ENTRY, GetString_JXR_FIELD_TAG(ifde->field_tag) );
 	dinfo->image_byte_count = ifde->values_or_offset;
 	break;
       default :
-	/* TODO - output some message if not supported? */
+	TRACEMSS(dinfo,0,JXRTRC_DIR_UNSUPPORTED_ENTRY, GetString_JXR_FIELD_TAG(ifde->field_tag) );
 	break;
     }
   }

@@ -25,6 +25,12 @@
 #endif
 #include "jmorecfg.h"		/* seldom changed options */
 
+/* The following include helps diagnostics by allowing us to lookup
+ * enum names as string constants. */
+#ifndef JXR_ENUM_FACTORY_INCLUDED
+#define JXR_ENUM_FACTORY_INCLUDED
+#include "jxrefact.h"
+#endif
 
 /* Version ID for the JPEG library.
  * Might be useful for tests like "#if JPEGXR_LIB_VERSION >= 11".
@@ -62,6 +68,8 @@
 #define JXR_FIXED_FILE_HEADER_1BYTE  0xBC
 #define JXR_FILE_VERSION  1
 #define JXR_MIN_NUM_IFD_ENTRIES  5
+#define JXR_GDI_SIG_HI 0x574D5048
+#define JXR_GDI_SIG_LO 0x4F544F00
 
 /* Data structures for images (arrays of samples and of DCT coefficients).
  * On 80x86 machines, the image arrays are too big for near pointers,
@@ -152,41 +160,41 @@ typedef struct {
 } jxr_spatial_xfrm_subordinate;
 
 /* Output color formats */
-typedef enum {
-		JOUTCOL_YONLY,		/* Luminance only */
-		JOUTCOL_YUV420,
-		JOUTCOL_YUV422,
-		JOUTCOL_YUV444,
-		JOUTCOL_CMYK,
-		JOUTCOL_CMYKDIRECT,
-		JOUTCOL_NCOMPONENT,	/* Generic n-component */
-		JOUTCOL_RGB,
-		JOUTCOL_RGBE,
-		JOUTCOL_RESERVED
-} JXR_OUTPUT_CLR_FMT;
+#define JXR_OUTPUT_CLR_FMT_DEF(XX) \
+		XX(JOUTCOL_YONLY,) \
+		XX(JOUTCOL_YUV420,) \
+		XX(JOUTCOL_YUV422,) \
+		XX(JOUTCOL_YUV444,) \
+		XX(JOUTCOL_CMYK,) \
+		XX(JOUTCOL_CMYKDIRECT,) \
+    XX(JOUTCOL_NCOMPONENT,) \
+		XX(JOUTCOL_RGB,) \
+		XX(JOUTCOL_RGBE,) \
+		XX(JOUTCOL_RESERVED,)
+DECLARE_ENUM(JXR_OUTPUT_CLR_FMT,JXR_OUTPUT_CLR_FMT_DEF)
+
 
 /* Output bit depths */
-typedef enum {
-		JOUTDEP_BD1WHITE1,
-		JOUTDEP_BD8,
-		JOUTDEP_BD16,
-		JOUTDEP_BD16S,
-		JOUTDEP_BD16F,
-		JOUTDEP_RESERVED1,
-		JOUTDEP_BD32S,
-		JOUTDEP_BD32F,
-		JOUTDEP_BD5,
-		JOUTDEP_BD10,
-		JOUTDEP_BD565,
-		JOUTDEP_RESERVED2,
-		JOUTDEP_BD1BLACK1
-} JXR_OUTPUT_BIT_DEPTH;
+#define JXR_OUTPUT_BIT_DEPTH_DEF(XX) \
+		XX(JOUTDEP_BD1WHITE1,) \
+		XX(JOUTDEP_BD8,      ) \
+		XX(JOUTDEP_BD16,     ) \
+		XX(JOUTDEP_BD16S,    ) \
+		XX(JOUTDEP_BD16F,    ) \
+		XX(JOUTDEP_RESERVED1,) \
+		XX(JOUTDEP_BD32S,    ) \
+		XX(JOUTDEP_BD32F,    ) \
+		XX(JOUTDEP_BD5,      ) \
+		XX(JOUTDEP_BD10,     ) \
+		XX(JOUTDEP_BD565,    ) \
+		XX(JOUTDEP_RESERVED2,) \
+		XX(JOUTDEP_BD1BLACK1,)
+DECLARE_ENUM(JXR_OUTPUT_BIT_DEPTH,JXR_OUTPUT_BIT_DEPTH_DEF)
+
 
 /* Image header. Fields are presented in the order they appear in the codestream. */
 typedef struct {
 
-  /* Identifies the codestream - 0x574D50484F544F00 for JPEG-XR */
-  UINT64 gdi_sig; 
   /* Reserved for future specifications */
   /* Equal to 0x1 if compatible with this decoder */
   UINT8 reserved_b; /* 4 bits */
@@ -234,8 +242,8 @@ typedef struct {
   JXR_OUTPUT_BIT_DEPTH output_bitdepth; /* 4 bits */
   
   /* Output image dimensions */
-  UINT32 width_minus; 	/* 16 bits if short_header_flag = TRUE */
-  UINT32 width_minus1;  /* 16 bits if short_header_flag = TRUE */
+  UINT32 width_minus1; 	/* 16 bits if short_header_flag = TRUE */
+  UINT32 height_minus1;  /* 16 bits if short_header_flag = TRUE */
 
   /* Tile partitioning sequence lengths */
   /* Set to zero, unless tiling_flag = TRUE */
@@ -253,7 +261,7 @@ typedef struct {
   UINT8 bottom_margin; 	/* 6 bits */
   UINT8 right_margin; 	/* 6 bits */
     
-} image_header;
+} jxr_image_header;
 
 /* Internal color formats. */
 typedef enum {
@@ -332,7 +340,7 @@ typedef struct {
   UINT8 shift_bits;
   /* Present if output_bitdepth is BD32F */
   UINT8 len_mantissa;
-  UINT8 exp_bias;
+  INT8 exp_bias;
 
   /* Do we use a single QP (quantisation parameter) set for the DC
    * bands of all macroblocks in this plane? */
@@ -370,7 +378,7 @@ typedef struct {
   /* Only present when bands_present is not DCONLY or NOHIGHPASS */
   boolean reserved_j_bit;
 
-} image_plane_header;
+} jxr_image_plane_header;
 
 /* Title index table */
 typedef struct {
@@ -383,7 +391,7 @@ typedef struct {
   UINT16 num_index_table_entries;
   UINT64 * index_offset_tile;
 
-} index_table_tiles;
+} jxr_index_table_tiles;
 
 /* Master record for a JPEG-XR coded image decompression instance */
 struct jpegxr_image_struct {
@@ -393,17 +401,17 @@ struct jpegxr_image_struct {
   unsigned int offset;
   
   /* Image header */
-  image_header * hdr;
+  jxr_image_header * hdr;
   
   /* Plane headers for image and alpha planes */
-  image_plane_header * img_plane_hdr;
-  image_plane_header * alpha_plane_hdr; /* NULL if no alpha plane */
+  jxr_image_plane_header * img_plane_hdr;
+  jxr_image_plane_header * alpha_plane_hdr; /* NULL if no alpha plane */
 
   /* Tile index table */
   /* Tiles need not be in order and there may be codestream segments of
    * unspecified content between the tiles. The tile index table is used
    * to locate the data that corresponds to a particular tile */
-  index_table_tiles * idx_tbl;
+  jxr_index_table_tiles * idx_tbl;
 
   /* Data between headers and coded tile data */ 
   /* Total number of bytes that precede tile data */
@@ -423,16 +431,40 @@ struct jpegxr_image_struct {
 
 /* Data types for JPEG-XR directory instances */
 
-/* Supported field tags for IFD entries */
-/* TODO - add support for all specified field tags. */
-typedef enum {
-      JFIELDTAG_PIXEL_FORMAT = 0xBC01,
-      JFIELDTAG_IMAGE_HEIGHT = 0xBC80,
-      JFIELDTAG_IMAGE_WIDTH = 0xBC81,
-      JFIELDTAG_IMAGE_OFFSET = 0xBCC0,
-      JFIELDTAG_IMAGE_BYTE_COUNT = 0xBCC1
-} JXR_FIELD_TAG;
 
+/* Field tags for IFD entries */
+#define JXR_FIELD_TAG_DEF(XX) \
+    XX(JFIELDTAG_DOCUMENT_NAME,=0x010D) \
+    XX(JFIELDTAG_IMAGE_DESCRIPTION,=0x010E) \
+    XX(JFIELDTAG_EQUIPMENT_MAKE,=0x010F) \
+    XX(JFIELDTAG_EQUIPMENT_MODEL,=0x0110) \
+    XX(JFIELDTAG_PAGE_NAME,=0x011D) \
+    XX(JFIELDTAG_PAGE_NUMBER,=0x0129) \
+    XX(JFIELDTAG_SOFTWARE_NAME_VERSION,=0x0131) \
+    XX(JFIELDTAG_DATE_TIME,=0x0132) \
+    XX(JFIELDTAG_ARTIST_NAME,=0x013B) \
+    XX(JFIELDTAG_HOST_COMPUTER,=0x013C) \
+    XX(JFIELDTAG_COPYRIGHT_NOTICE,=0x8298) \
+    XX(JFIELDTAG_COLOR_SPACE,=0xA001) \
+    XX(JFIELDTAG_PIXEL_FORMAT,=0xBC01) \
+    XX(JFIELDTAG_SPATIAL_XFRM_PRIMARY,=0xBC02) \
+    XX(JFIELDTAG_IMAGE_TYPE,=0xBC04) \
+    XX(JFIELDTAG_PTM_COLOR_INFO,=0xBC05) \
+    XX(JFIELDTAG_PROFILE_LEVEL_CONTAINER,=0xBC06) \
+    XX(JFIELDTAG_IMAGE_WIDTH,=0xBC80) \
+    XX(JFIELDTAG_IMAGE_HEIGHT,=0xBC81) \
+    XX(JFIELDTAG_WIDTH_RESOLUTION,=0xBC82) \
+    XX(JFIELDTAG_HEIGHT_RESOLUTION,=0xBC83) \
+    XX(JFIELDTAG_IMAGE_OFFSET,=0xBCC0) \
+    XX(JFIELDTAG_IMAGE_BYTE_COUNT,=0xBCC1) \
+    XX(JFIELDTAG_ALPHA_OFFSET,=0xBCC2) \
+    XX(JFIELDTAG_ALPHA_BYTE_COUNT,=0xBCC3) \
+    XX(JFIELDTAG_IMAGE_BAND_PRESENCE,=0xBCC4) \
+    XX(JFIELDTAG_ALPHA_BAND_PRESENCE,=0xBCC5) \
+    XX(JFIELDTAG_PADDING_DATA,=0xEA1C)
+DECLARE_ENUM(JXR_FIELD_TAG,JXR_FIELD_TAG_DEF)
+
+/* Element type for IFD entries */
 typedef enum {
       JELEMTYPE_BYTE=1,
       JELEMTYPE_UTF8,
@@ -727,12 +759,15 @@ EXTERN(int) jpegxr_file_read_header JPP((j_file_ptr finfo));
 /* Read metadata from a directory stream to obtain details of coded
  * image codestreams contained within. */
 EXTERN(int) jpegxr_dir_read_metadata JPP((j_dir_ptr dinfo));
-/* Read start of JPEG-XR directory stream. */
+/* Read start of a JPEG-XR directory stream. */
 EXTERN(int) jpegxr_dir_read_header JPP((j_dir_ptr dinfo));
 /* Read IFD entry values from a directory stream */
 EXTERN(int) jpegxr_dir_read_ifd_entries JPP((j_dir_ptr dinfo));
 
-/* Read the header from a JPEG-XR codestream. */
+/* Read the metadata from a coded image codestream to obtain decompression
+ * parameters and details of macroblock and tile layers.*/
+EXTERN(int) jpegxr_image_read_metadata JPP((j_image_ptr iinfo));
+/* Read the start of a JPEG-XR coded image codestream. */
 EXTERN(int) jpegxr_image_read_header JPP((j_image_ptr iinfo));
 
 

@@ -183,14 +183,23 @@ JMESSAGE(JWRN_MUST_RESYNC,
 JMESSAGE(JWRN_NOT_SEQUENTIAL, "Invalid SOS parameters for sequential JPEG")
 JMESSAGE(JWRN_TOO_MUCH_DATA, "Application transferred too many scanlines")
 
+
+
 /* The following are JPEG-XR specific codes */
+
 /* Errors */
 JMESSAGE(JXRERR_FILE_HEADER,
   "Fixed file header bytes are Ox%x and 0x%x: expecting 0x%x and 0x%x")
 JMESSAGE(JXRERR_TOO_FEW_IFD_ENTRIES,
   "Invalid directory: only %u IFD entries, %u or more are required")
+JMESSAGE(JXRERR_WRONG_GDI_SIG,
+  "Wrong GDI signature: got 0x%x%x, expecting 0x%x%x")
+  
+  
 /* Warnings */
-//JMESSAGE(JXRWRN_, "")
+JMESSAGE(JXRWRN_IMAGE_INCOMPATIBLE, "Warning: codestream is probably incompatible")
+
+
 /* Trace messages */
 JMESSAGE(JXRTRC_FILE_BEGIN_META, "Reading file metadata")
 JMESSAGE(JXRTRC_FILE_BEGIN, "Parsing file header")
@@ -207,28 +216,51 @@ JMESSAGE(JXRTRC_DIR_BEGIN_META, "Reading directory (IFD) metadata")
 JMESSAGE(JXRTRC_DIR_BEGIN, "Parsing IFD header")
 
 JMESSAGE(JXRTRC_DIR_NUM_IFD_ENTRIES, "Directory contains %u IFD entries")
-JMESSAGE(JXRTRC_DIR_FIELD_TAG, "IFD entry %u has field tag 0x%x")
+JMESSAGE(JXRTRC_DIR_FIELD_TAG, "IFD entry %u has field tag %s")
 JMESSAGE(JXRTRC_DIR_ELEM_TYPE, "IFD entry %u has element type 0x%x")
 JMESSAGE(JXRTRC_DIR_ELEM_TYPE_RESERVED,
   "Caution: IFD entry element type of %u is reserved for future specifications ")
 JMESSAGE(JXRTRC_DIR_NUM_ELEMS, "IFD entry %u has %u elements")
 JMESSAGE(JXRTRC_DIR_VALUES, "IFD entry %u has values or offset 0x%x")
 JMESSAGE(JXRTRC_DIR_NEXT_IFD, "Found next IFD at offset 0x%x")
-JMESSAGE(JXRTRC_DIR_NO_MORE_IFD, "No more IFDs in file")
 
 JMESSAGE(JXRTRC_DIR_BEGIN_ENTRIES, "Reading IFD entry values")
+JMESSAGE(JXRTRC_DIR_NO_MORE_IFD, "No more IFDs in file")
+JMESSAGE(JXRTRC_DIR_UNSUPPORTED_ENTRY,
+  "Caution: ignoring IFD entry with unsupported field tag %s")
+JMESSAGE(JXRTRC_DIR_READ_ENTRY, "Reading IFD entry values for %s")
+JMESSAGE(JXRTRC_DIR_READ_ENTRY_MULTIPLE, "Read IFD entry value %u of %u as 0x%x")
+JMESSAGE(JXRTRC_DIR_IGNORE_ENTRY,
+  "Caution: ignoring IFD entry with unsupported field combination")
 
-/*
+JMESSAGE(JXRTRC_SEEK_IMAGE, "Seeking to coded image at offset 0x%x")
+JMESSAGE(JXRTRC_CREATE_IMAGE, "Creating coded image object")
+JMESSAGE(JXRTRC_IMAGE_BEGIN, "Reading coded image metadata")
+JMESSAGE(JXRTRC_IMAGE_HEAD_BEGIN, "Parsing coded image header")
+JMESSAGE(JXRTRC_GDI_SIG, "Found correct GDI signature 0x%x%x")
+JMESSAGE(JXRTRC_FUTURE_SPEC, "Caution: codestream is from a future specification")
+JMESSAGE(JXRTRC_RESERVED_VALUE, "Caution: found a reserved value")
+JMESSAGE(JXRTRC_HARD_TILING, "Hard tiling flag set to %u")
+JMESSAGE(JXRTRC_TILING, "Tiling flag set to %u")
+JMESSAGE(JXRTRC_FREQ_MODE, "Frequency mode flag set to %u")
+JMESSAGE(JXRTRC_XFRM_SUB,
+  "Spatial transform subordinate has CW rotation %u and flip (%u, %u)")
+JMESSAGE(JXRTRC_IDX_TABLE, "Index table present flag set to %u")
+JMESSAGE(JXRTRC_OVERLAP_MODE, "Overlap mode is 0x%x")
+JMESSAGE(JXRTRC_SHORT_HEADER,      "Short header flag set to %u")
+JMESSAGE(JXRTRC_LONG_WORD,         "Long word flag set to %u")
+JMESSAGE(JXRTRC_WINDOWING,         "Windowing flag set to %u")
+JMESSAGE(JXRTRC_TRIM_FLEXBITS,     "Trim flexbits flag set to %u")
+JMESSAGE(JXRTRC_ALPHA_IMAGE_PLANE, "Alpha image plane flag set to %u")
+JMESSAGE(JXRTRC_OUTPUT_CLR_FORMAT, "Output colour format is %s")
+JMESSAGE(JXRTRC_OUTPUT_BITDEPTH, "Output bit depth is %s")
+JMESSAGE(JXRTRC_DIMENSIONS, "Image pixel dimensions are %u x %u")
+JMESSAGE(JXRTRC_TILE_DIMENSIONS, "Image tile dimensions are %u x %u")
+JMESSAGE(JXRTRC_TILE_HSEQUENCE, "Horizontal tile %u of %u is %u macroblocks wide")
+JMESSAGE(JXRTRC_TILE_VSEQUENCE, "Vertical tile %u of %u is %u macroblocks tall")
+JMESSAGE(JXRTRC_WINDOW_MARGIN, "Window margins: top=%u; bottom=%u; left=%u; right=%u")
 
-
-  fprintf(stdout, "Supported IFD entry values\n");
-  for (int i=0; i<16; i++) 
-    fprintf(stdout, "pixel format: %x\n", finfo->dirs[0]->pixel_format[i] );
-  fprintf(stdout, "image_width: %x\n", finfo->dirs[0]->image_width );
-  fprintf(stdout, "image_height: %x\n", finfo->dirs[0]->image_height );
-  fprintf(stdout, "image_offset: %x\n", finfo->dirs[0]->image_offset );
-  fprintf(stdout, "image_byte_count: %x\n", finfo->dirs[0]->image_byte_count );
-*/
+JMESSAGE(JXRTRC_IMAGE_PLANE_BEGIN, "Parsing image plane header, current plane alpha flag is %u")
 
 #ifdef JMAKE_ENUM_LIST
 
@@ -293,6 +325,10 @@ JMESSAGE(JXRTRC_DIR_BEGIN_ENTRIES, "Reading IFD entry values")
   ((cinfo)->err->msg_code = (code), \
    (cinfo)->err->msg_parm.i[0] = (p1), \
    (cinfo)->err->msg_parm.i[1] = (p2), \
+   (*(cinfo)->err->emit_message) ((j_common_ptr) (cinfo), -1))
+#define WARNMSS(cinfo,code,str)  \
+  ((cinfo)->err->msg_code = (code), \
+   strncpy((cinfo)->err->msg_parm.s, (str), JMSG_STR_PARM_MAX), \
    (*(cinfo)->err->emit_message) ((j_common_ptr) (cinfo), -1))
 
 /* Informational/debugging messages */
