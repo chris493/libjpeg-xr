@@ -1,7 +1,7 @@
 dnl IJG auto-configuration source file.
 dnl Process this file with autoconf to produce a configure script.
 #
-# Configure script for IJG libjpeg
+# Configure script for libjpeg-xr
 #
 AC_PREREQ(2.59)
 AC_INIT(jdmaster.c)
@@ -27,7 +27,7 @@ AM_INIT_AUTOMAKE([libjpeg], [6.1.0])
 AM_MAINTAINER_MODE
 
 # Check for programs
-AC_PROG_CC
+AC_PROG_CC([color-gcc gcc])
 AC_PROG_CC_STDC
 AC_PROG_CPP
 AC_PROG_INSTALL

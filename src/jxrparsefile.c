@@ -107,8 +107,8 @@ jpegxr_file_read_header (j_file_ptr finfo)
   INPUT_VARS(finfo);
   
   /* Parse fixed length file prefix */
-  INPUT_2BYTES(finfo, c2, return FALSE);
-  INPUT_BYTE(finfo, c, return FALSE);
+  INPUT_2BYTES(((j_common_ptr)finfo), c2, return FALSE);
+  INPUT_BYTE(((j_common_ptr)finfo), c, return FALSE);
   /* check this looks like a .jxr file */
   if (c2 != JXR_FIXED_FILE_HEADER_2BYTE || c != JXR_FIXED_FILE_HEADER_1BYTE )
     ERREXIT4(	finfo, JXRERR_FILE_HEADER,
@@ -116,7 +116,7 @@ jpegxr_file_read_header (j_file_ptr finfo)
   TRACEMS2(finfo,3,JXRTRC_FILE_HEADER, c2, c);
   
   /* Parse file version ID */
-  INPUT_BYTE(finfo, c, return FALSE);
+  INPUT_BYTE(((j_common_ptr)finfo), c, return FALSE);
   /* check version matches with this library */
   if (c != JXR_FILE_VERSION)
     TRACEMS2(finfo,0,JXRTRC_FILE_VERSION_DIFF, c, JXR_FILE_VERSION);
@@ -126,7 +126,7 @@ jpegxr_file_read_header (j_file_ptr finfo)
     
   /* Parse offset of first directory */
   /* Stored in little endian format. */
-  INPUT_4BYTES_LE(finfo, c4, return FALSE);
+  INPUT_4BYTES_LE(((j_common_ptr)finfo), c4, return FALSE);
   TRACEMS1(finfo,2,JXRTRC_FILE_OFFSET, c4);
   finfo->first_ifd_offset = c4;
   

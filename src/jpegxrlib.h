@@ -254,7 +254,7 @@ typedef struct {
   UINT16 * tile_width_in_mb; /* 8 bits if short_header_flag = TRUE */
   UINT16 * tile_height_in_mb; /* 8 bits if short_header_flag = TRUE */
 
-  /* Output window margins*/
+  /* Output window margins */
   /* Set to zero, unless windowing_flag = TRUE */
   UINT8 top_margin; 	/* 6 bits */
   UINT8 left_margin; 	/* 6 bits */
@@ -263,26 +263,26 @@ typedef struct {
     
 } jxr_image_header;
 
-/* Internal color formats. */
-typedef enum {
-      JINTCOL_YONLY, 		/* Luninance only */
-      JINTCOL_YUV420, 	   
-      JINTCOL_YUV422, 	   
-      JINTCOL_YUV444, 	  
-      JINTCOL_YUVK,
-      JINTCOL_RESERVED1, 	
-      JINTCOL_NCOMPONENT, 	/* Generic n-component */
-      JINTCOL_RESERVED2 
-} JXR_INTERNAL_CLR_FMT;
+/* Internal color formats */
+#define JXR_INTERNAL_CLR_FMT_DEF(XX) \
+		XX(JINTCOL_YONLY, 		) \ 
+		XX(JINTCOL_YUV420, 	  ) \
+		XX(JINTCOL_YUV422, 	  ) \
+		XX(JINTCOL_YUV444, 	  ) \
+		XX(JINTCOL_YUVK,      ) \
+		XX(JINTCOL_RESERVED1, ) \
+		XX(JINTCOL_NCOMPONENT,) \ 
+		XX(JINTCOL_RESERVED2, )
+DECLARE_ENUM(JXR_INTERNAL_CLR_FMT,JXR_INTERNAL_CLR_FMT_DEF)
 
 /* Frequency bands present */
-typedef enum {
-      JBANDS_ALL,		    /* All subbands are present */
-      JBANDS_NOFLEXBITS,	/* Flexbits is not present */
-      JBANDS_NOHIGHPASS,	/* Flexbits and HP are not present */
-      JBANDS_DCONLY,		  /* Only DC is present */
-      JBANDS_RESERVED
-} JXR_BANDS_PRESENT;
+#define JXR_BANDS_PRESENT_DEF(XX) \
+    XX(JBANDS_ALL,		   ) \ 
+    XX(JBANDS_NOFLEXBITS,) \	
+    XX(JBANDS_NOHIGHPASS,) \	
+    XX(JBANDS_DCONLY,		 ) \ 
+    XX(JBANDS_RESERVED,  )
+DECLARE_ENUM(JXR_BANDS_PRESENT,JXR_BANDS_PRESENT_DEF)
 
 /* Component mode, specifies whether the same QP set should be used 
  * across components. */

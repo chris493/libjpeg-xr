@@ -262,6 +262,23 @@ JMESSAGE(JXRTRC_WINDOW_MARGIN, "Window margins: top=%u; bottom=%u; left=%u; righ
 
 JMESSAGE(JXRTRC_IMAGE_PLANE_BEGIN, "Parsing image plane header, current plane alpha flag is %u")
 
+JMESSAGE(JXRTRC_SCALED_FLAG, "Scaled flag set to %u")
+JMESSAGE(JXRTRC_BANDS_PRESENT, "Codestream contains frequency components %s")
+//JMESSAGE(JXRTRC_WINDOW_MARGIN, "")
+//JMESSAGE(JXRTRC_WINDOW_MARGIN, "")
+//JMESSAGE(JXRTRC_WINDOW_MARGIN, "")
+//JMESSAGE(JXRTRC_WINDOW_MARGIN, "")
+//JMESSAGE(JXRTRC_WINDOW_MARGIN, "")
+//JMESSAGE(JXRTRC_WINDOW_MARGIN, "")
+//JMESSAGE(JXRTRC_WINDOW_MARGIN, "")
+//JMESSAGE(JXRTRC_WINDOW_MARGIN, "")
+
+JMESSAGE(JXRTRC_PARSE_DC_QP, "Parsing DC quantisation parameter set")
+JMESSAGE(JXRTRC_PARSE_LP_QP, "Parsing low pass quantisation parameter set")
+JMESSAGE(JXRTRC_PARSE_HP_QP, "Parsing high pass quantisation parameter set")
+
+
+
 #ifdef JMAKE_ENUM_LIST
 
   JMSG_LASTMSGCODE

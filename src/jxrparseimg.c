@@ -20,6 +20,69 @@
 #endif
 
 /*
+ * Parse the DC component quantisation paramter set.
+ *  
+ */          
+LOCAL(boolean)
+parse_dc_qp (j_image_ptr iinfo)
+{
+  TRACEMS(iinfo,2,JXRTRC_PARSE_DC_QP);
+  
+  int num_components = 0;
+  
+  /* Parse or infer component mode */
+  if (num_components != 1) {
+    INPUT_BITS(((j_common_ptr)iinfo),b,2,return FALSE);
+    iinfo->img_plane_hdr->component_mode = b;
+  } else {
+    iinfo->img_plane_hdr->component_mode = JCOMPMODE_UNIFORM;
+  }
+  
+  /* Parse any relevant quantisation parameters */
+  if (iinfo->img_plane_hdr->component_mode == JCOMPMODE_UNIFORM) {
+    INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
+    iinfo->img_plane_hdr->dc_quant = b;
+  } else if (iinfo->img_plane_hdr->component_mode == JCOMPMODE_SEPARATE) {
+    INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
+    iinfo->img_plane_hdr->dc_quant_luma = b;
+    INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
+    iinfo->img_plane_hdr->dc_quant_chroma = b;
+  } else if (iinfo->img_plane_hdr->component_mode == JCOMPMODE_INDEPENDENT) {
+    for (int i = 0; i<num_components; i++) {
+      INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
+      iinfo->img_plane_hdr->dc_quant_ch[i] = b;
+    }
+  }
+
+
+
+  return TRUE;
+}
+/*
+ * Parse the low pass quantisation paramter set.
+ *  
+ */          
+LOCAL(boolean)
+parse_lp_qp (j_image_ptr iinfo, unsigned int num_qps)
+{
+  TRACEMS(iinfo,2,JXRTRC_PARSE_LP_QP);
+  
+  return TRUE;
+}
+/*
+ * Parse the high pass quantisation paramter set.
+ *  
+ */          
+LOCAL(boolean)
+parse_hp_qp (j_image_ptr iinfo, unsigned int num_qps)
+{
+  TRACEMS(iinfo,2,JXRTRC_PARSE_HP_QP);
+  
+  return TRUE;
+}
+
+
+/*
  * Read a JPEG-XR image to obtain headers and decompression
  * parameters. This reads image, tile and macroblock layer 
  * information. The source data should be at the start of the image
@@ -70,14 +133,14 @@ jpegxr_image_read_header (j_image_ptr iinfo)
   INPUT_VARS(iinfo);
   
   /* Read in GDI signature (8 bytes) */
-  INPUT_4BYTES(iinfo, c4, return FALSE);
-  INPUT_4BYTES(iinfo, cc4, return FALSE);
+  INPUT_4BYTES(((j_common_ptr)iinfo), c4, return FALSE);
+  INPUT_4BYTES(((j_common_ptr)iinfo), cc4, return FALSE);
   if (c4 != JXR_GDI_SIG_HI || cc4 != JXR_GDI_SIG_LO )
     ERREXIT4(iinfo, JXRERR_WRONG_GDI_SIG, c4,cc4, JXR_GDI_SIG_HI, JXR_GDI_SIG_LO );
   TRACEMS2(iinfo, 3, JXRTRC_GDI_SIG, c4, cc4);
   
   /* Read in first byte */
-  INPUT_BYTE(iinfo,c,return FALSE);
+  INPUT_BYTE(((j_common_ptr)iinfo),c,return FALSE);
   // reserved B (4 bits)
   hdr.reserved_b = GETBITS(c,0,4);
   if (hdr.reserved_b != 1) WARNMS(iinfo,JXRWRN_IMAGE_INCOMPATIBLE);
@@ -89,7 +152,7 @@ jpegxr_image_read_header (j_image_ptr iinfo)
   if (hdr.reserved_c != 1) TRACEMS(iinfo,0,JXRTRC_FUTURE_SPEC);
   
   /* Read in second byte */
-  INPUT_BYTE(iinfo,c,return FALSE);
+  INPUT_BYTE(((j_common_ptr)iinfo),c,return FALSE);
   // tiling_flag
   hdr.tiling_flag = GETBITS(c,0,1);
   TRACEMS1(iinfo,3,JXRTRC_TILING,hdr.tiling_flag);
@@ -115,7 +178,7 @@ jpegxr_image_read_header (j_image_ptr iinfo)
   if (hdr.overlap_mode == 3) TRACEMS(iinfo,0,JXRTRC_RESERVED_VALUE);
   
   /* Read in third byte */
-  INPUT_BYTE(iinfo,c,return FALSE);
+  INPUT_BYTE(((j_common_ptr)iinfo),c,return FALSE);
   // short_header_flag
   hdr.short_header_flag = GETBITS(c,0,1);
   TRACEMS1(iinfo,3,JXRTRC_SHORT_HEADER, hdr.short_header_flag);
@@ -139,7 +202,7 @@ jpegxr_image_read_header (j_image_ptr iinfo)
   // for easy reading out of enum string identifiers
   DEFINE_ENUM( JXR_OUTPUT_CLR_FMT, JXR_OUTPUT_CLR_FMT_DEF );
   DEFINE_ENUM( JXR_OUTPUT_BIT_DEPTH, JXR_OUTPUT_BIT_DEPTH_DEF );
-  INPUT_BYTE(iinfo,c,return FALSE);
+  INPUT_BYTE(((j_common_ptr)iinfo),c,return FALSE);
   hdr.output_clr_fmt = GETBITS(c,0,4);
   TRACEMSS(iinfo,3,JXRTRC_OUTPUT_CLR_FORMAT,
     GetString_JXR_OUTPUT_CLR_FMT( hdr.output_clr_fmt) );
@@ -149,11 +212,11 @@ jpegxr_image_read_header (j_image_ptr iinfo)
     
   /* Read in dimensions */
   if (hdr.short_header_flag) {
-    INPUT_2BYTES(iinfo,c4,return FALSE);
-    INPUT_2BYTES(iinfo,cc4,return FALSE);
+    INPUT_2BYTES(((j_common_ptr)iinfo),c4,return FALSE);
+    INPUT_2BYTES(((j_common_ptr)iinfo),cc4,return FALSE);
   } else {
-    INPUT_4BYTES(iinfo,c4,return FALSE);
-    INPUT_4BYTES(iinfo,cc4,return FALSE);
+    INPUT_4BYTES(((j_common_ptr)iinfo),c4,return FALSE);
+    INPUT_4BYTES(((j_common_ptr)iinfo),cc4,return FALSE);
   }
   hdr.width_minus1 = c4;
   hdr.height_minus1 = cc4;
@@ -161,9 +224,9 @@ jpegxr_image_read_header (j_image_ptr iinfo)
   
   /* Read tiling dimensions, if present */
   if (hdr.tiling_flag) {
-    INPUT_BYTE(iinfo,c,return FALSE);
-    INPUT_BYTE(iinfo,cc,return FALSE);
-    INPUT_BYTE(iinfo,ccc,return FALSE);
+    INPUT_BYTE(((j_common_ptr)iinfo),c,return FALSE);
+    INPUT_BYTE(((j_common_ptr)iinfo),cc,return FALSE);
+    INPUT_BYTE(((j_common_ptr)iinfo),ccc,return FALSE);
     hdr.num_hor_tiles_minus1 = ((c << 4) & 0xffffff) + GETBITS(cc,0,4) ;
     hdr.num_ver_tiles_minus1 = ccc + ((GETBITS(cc,4,4) << 8) & 0xffffff) ;
   } else {
@@ -187,14 +250,14 @@ jpegxr_image_read_header (j_image_ptr iinfo)
           );
     // read in from stream
     for (int i=0; i<hdr.num_ver_tiles_minus1; i++) {
-      if (hdr.short_header_flag)  INPUT_BYTE(iinfo,c2,return FALSE);
-      else                        INPUT_2BYTES(iinfo,c2,return FALSE);
+      if (hdr.short_header_flag)  INPUT_BYTE(((j_common_ptr)iinfo),c2,return FALSE);
+      else                        INPUT_2BYTES(((j_common_ptr)iinfo),c2,return FALSE);
       TRACEMS3(iinfo,4,JXRTRC_TILE_VSEQUENCE, i+1, hdr.num_ver_tiles_minus1+1, c2);
       tile_width_in_mb[i] = c2;
     }
     for (int i=0; i<hdr.num_hor_tiles_minus1; i++) {
-      if (hdr.short_header_flag)  INPUT_BYTE(iinfo,c2,return FALSE);
-      else                        INPUT_2BYTES(iinfo,c2,return FALSE);
+      if (hdr.short_header_flag)  INPUT_BYTE(((j_common_ptr)iinfo),c2,return FALSE);
+      else                        INPUT_2BYTES(((j_common_ptr)iinfo),c2,return FALSE);
       TRACEMS3(iinfo,4,JXRTRC_TILE_HSEQUENCE, i+1, hdr.num_hor_tiles_minus1+1, c2);
       tile_height_in_mb[i] = c2;
     }
@@ -205,9 +268,9 @@ jpegxr_image_read_header (j_image_ptr iinfo)
   
   /* Read window margins, if present */
   if (hdr.windowing_flag) {
-    INPUT_BYTE(iinfo,c,return FALSE);
-    INPUT_BYTE(iinfo,cc,return FALSE);
-    INPUT_BYTE(iinfo,ccc,return FALSE);
+    INPUT_BYTE(((j_common_ptr)iinfo),c,return FALSE);
+    INPUT_BYTE(((j_common_ptr)iinfo),cc,return FALSE);
+    INPUT_BYTE(((j_common_ptr)iinfo),ccc,return FALSE);
     hdr.top_margin    =  GETBITS(c,0,6);
     hdr.left_margin   = (GETBITS(c, 6,2) << 4) + GETBITS(cc, 0,4);
     hdr.right_margin  = (GETBITS(cc,4,4) << 2) + GETBITS(ccc,0,2);
@@ -232,6 +295,7 @@ jpegxr_image_read_header (j_image_ptr iinfo)
 GLOBAL(int)
 jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
 {
+  UINT8 b; // for <=8 bits
   UINT8 c, cc;
   UINT16 c2;
   UINT32 c4;
@@ -242,17 +306,22 @@ jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
   jxr_image_plane_header phdr;
   if (alpha) iinfo->alpha_plane_hdr = &phdr;
   else       iinfo->img_plane_hdr   = &phdr;
+  
+  /* Definitions to output enum strings */
+  DEFINE_ENUM( JXR_BANDS_PRESENT, JXR_BANDS_PRESENT_DEF );
     
   INPUT_VARS(iinfo);
 
   /* Read in first byte */
-  INPUT_BYTE(iinfo,c,return FALSE);
+  INPUT_BYTE(((j_common_ptr)iinfo),c,return FALSE);
   // internal colour format (3 bits)
   phdr.internal_clr_fmt = GETBITS(c,0,3);
   // scaled flag
   phdr.scaled_flag = GETBITS(c,3,1);
+  TRACEMS1(iinfo,2,JXRTRC_SCALED_FLAG,phdr.scaled_flag);
   // bands present (4 bits)
   phdr.bands_present = GETBITS(c,4,4);
+  TRACEMSS(iinfo,2,JXRTRC_BANDS_PRESENT, GetString_JXR_BANDS_PRESENT(phdr.bands_present));
   
   /* Internal colour format specific parameters */
   if (phdr.internal_clr_fmt ==  JINTCOL_YUV444 ||
@@ -261,7 +330,7 @@ jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
     
     /* We only require one byte of colour format specific stuff in this
      * case */
-    INPUT_BYTE(iinfo,c,return FALSE);
+    INPUT_BYTE(((j_common_ptr)iinfo),c,return FALSE);
     /* First four bits */
     if (phdr.internal_clr_fmt == JINTCOL_YUV420 ||
         phdr.internal_clr_fmt == JINTCOL_YUV422) {
@@ -279,12 +348,12 @@ jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
   } else if (phdr.internal_clr_fmt == JINTCOL_NCOMPONENT) {
     
     /* Here we require one OR two bytes of colour format specific stuff */
-    INPUT_BYTE(iinfo, c, return FALSE);
+    INPUT_BYTE(((j_common_ptr)iinfo), c, return FALSE);
     /* First four bits */
     phdr.num_components_minus1 = GETBITS(c,0,4);
     if (phdr.num_components_minus1 == 0xf) {
       /* Last 12 bits... */
-      INPUT_BYTE(iinfo, cc, return FALSE);
+      INPUT_BYTE(((j_common_ptr)iinfo), cc, return FALSE);
       phdr.num_components_extended_minus16 =
           (GETBITS(c,4,4) << 4) + GETBITS(cc,0,8);
     } else {
@@ -298,14 +367,14 @@ jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
   }
   
   /* Output bit depth specific parameters */
-  INPUT_BYTE(iinfo, c,return FALSE);
+  INPUT_BYTE(((j_common_ptr)iinfo), c,return FALSE);
   if (iinfo->hdr->output_bitdepth == JOUTDEP_BD16  ||
       iinfo->hdr->output_bitdepth == JOUTDEP_BD16S ||
       iinfo->hdr->output_bitdepth == JOUTDEP_BD32S) {
         phdr.shift_bits = c;
   } else if (
       iinfo->hdr->output_bitdepth == JOUTDEP_BD32F) {
-        INPUT_BYTE(iinfo,cc,return FALSE);
+        INPUT_BYTE(((j_common_ptr)iinfo),cc,return FALSE);
         phdr.len_mantissa = c;
         phdr.exp_bias = cc;
   } else if (
@@ -314,29 +383,33 @@ jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
         TRACEMS(iinfo,0,JXRTRC_RESERVED_VALUE);
   }
 
-  /* Last byte */
-  INPUT_BYTE(iinfo,c,return FALSE);
+  /* QP sets (unfortunately these aren't nicely byte aligned) */
+  INPUT_BITS(((j_common_ptr)iinfo),b,1,return FALSE);
   // dc_image_plane_uniform_flag
-  phdr.dc_image_plane_uniform_flag = GETBITS(c,0,1);
+  phdr.dc_image_plane_uniform_flag = b;
   // read in DC QPs if they are the same for all tiles
   if (phdr.dc_image_plane_uniform_flag)
     parse_dc_qp(iinfo);
   // read in low and high pass QPs if they are the same for all tiles
-  if (phdr.bands_present != JBANDS_DCONLY) {
-    phdr.reserved_i_bit;
-    phdr.lp_image_plane_uniform_flag;
+  if (phdr.bands_present == JBANDS_RESERVED) {
+    TRACEMS(iinfo,0,JXRTRC_RESERVED_VALUE);
+  } else if (phdr.bands_present != JBANDS_DCONLY) {
+    INPUT_BITS(((j_common_ptr)iinfo),b,1,return FALSE);
+    phdr.reserved_i_bit = b;
+    INPUT_BITS(((j_common_ptr)iinfo),b,1,return FALSE);
+    phdr.lp_image_plane_uniform_flag = b;
     // low pass
-    if (lp_image_plane_uniform_flag) {
-      NumLPQPs = 1;
-      parse_lp_qp(iinfo);
+    if (phdr.lp_image_plane_uniform_flag) {
+      parse_lp_qp(iinfo,1);
     }
     // high pass
     if (phdr.bands_present != JBANDS_NOHIGHPASS) {
-      phdr.reserved_j_bit;
-      phdr.hp_image_plane_uniform_flag;
+      INPUT_BITS(((j_common_ptr)iinfo),b,1,return FALSE);
+      phdr.reserved_j_bit = b;
+      INPUT_BITS(((j_common_ptr)iinfo),b,1,return FALSE);
+      phdr.hp_image_plane_uniform_flag = b;
       if (phdr.hp_image_plane_uniform_flag) {
-        NumHPQPs = 1;
-        parse_hp_qp(iinfo);
+        parse_hp_qp(iinfo,1);
       }
     }
   }
@@ -348,4 +421,3 @@ jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
   /* TODO return correct code */
   return JPEG_REACHED_SOS;
 }
-

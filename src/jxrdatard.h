@@ -19,7 +19,8 @@
 	struct jpeg_source_mgr * datasrc = (cinfo)->src;  \
 	const JOCTET * next_input_byte = datasrc->next_input_byte;  \
 	size_t bytes_in_buffer = datasrc->bytes_in_buffer;  \
-	long idx = datasrc->idx
+	long idx = datasrc->idx; \
+	unsigned char bit_idx = 0
 
 /* Unload the local copies --- do this only at a restart boundary */
 #define INPUT_SYNC(cinfo)  \
@@ -43,6 +44,23 @@
 	    { action; }  \
 	  INPUT_RELOAD(cinfo);  \
 	}
+	
+/* Read a number of bits (>=8) into variable V.
+ * If must suspend, take the specified action (typically "return FALSE").
+ */
+#define INPUT_BITS(cinfo,V,num_bits,action)  \
+	MAKE_BYTE_AVAIL(cinfo,action); \
+	      if ((num_bits) + bit_idx <= 8) { \
+		V = GETBITS( (GETJOCTET(*next_input_byte)),(bit_idx),(num_bits)); \
+		bit_idx += num_bits; \
+	      } else { \
+		V = GETBITS( (GETJOCTET(*next_input_byte)),(bit_idx),8-(bit_idx)); \
+		bit_idx = 0; \
+		bytes_in_buffer--; \
+		idx++; \
+		V = V << num_bits; \
+		V += GETBITS( (GETJOCTET(*next_input_byte++)),(bit_idx),(8-(bit_idx))); \
+	      }
 
 /* Read a byte into variable V.
  * If must suspend, take the specified action (typically "return FALSE").

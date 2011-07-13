@@ -44,7 +44,7 @@ jpegxr_dir_read_metadata (j_dir_ptr dinfo)
   
   /* Skip forward to the coded image */
   TRACEMS1(dinfo,2,JXRTRC_SEEK_IMAGE,dinfo->image_offset);
-  (*dinfo->src->seek_input_data) (dinfo, (long) dinfo->image_offset); 
+  (*dinfo->src->seek_input_data) (((j_common_ptr)dinfo), (long) dinfo->image_offset); 
   
   /* Create a coded image object*/
   /* TODO - currently we support a single coded image. Some directories
@@ -85,7 +85,7 @@ jpegxr_dir_read_header (j_dir_ptr dinfo)
   INPUT_VARS(dinfo);
   
   /* Number of IFD entries the IFD contains */
-  INPUT_2BYTES_LE(dinfo, c2, return FALSE);
+  INPUT_2BYTES_LE(((j_common_ptr)dinfo), c2, return FALSE);
   if (c2 < JXR_MIN_NUM_IFD_ENTRIES)
     ERREXIT2(dinfo,JXRERR_TOO_FEW_IFD_ENTRIES,c2,JXR_MIN_NUM_IFD_ENTRIES);
   TRACEMS1(dinfo, 3, JXRTRC_DIR_NUM_IFD_ENTRIES, c2);
@@ -115,12 +115,12 @@ jpegxr_dir_read_header (j_dir_ptr dinfo)
     
     /* Field tag determines type of IFD entry */
     /* We check for supported types later */
-    INPUT_2BYTES_LE(dinfo, c2, return FALSE);
+    INPUT_2BYTES_LE(((j_common_ptr)dinfo), c2, return FALSE);
     TRACEMS2(dinfo, 3, JXRTRC_DIR_FIELD_TAG, i, GetString_JXR_FIELD_TAG(c2));
     dinfo->ifd_entry_list[i]->field_tag = c2;
     
     /* Element type determines length and format of elements */
-    INPUT_2BYTES_LE(dinfo, c2, return FALSE);
+    INPUT_2BYTES_LE(((j_common_ptr)dinfo), c2, return FALSE);
     // check for reserved type
     if (c2 < JELEMTYPE_BYTE || c2 > JELEMTYPE_DOUBLE)
       TRACEMS2(dinfo, 0, JXRTRC_DIR_ELEM_TYPE_RESERVED, i, c2);
@@ -129,20 +129,20 @@ jpegxr_dir_read_header (j_dir_ptr dinfo)
     dinfo->ifd_entry_list[i]->element_type = c2;
     
     /* Number of elements */
-    INPUT_4BYTES_LE(dinfo, c4, return FALSE);
+    INPUT_4BYTES_LE(((j_common_ptr)dinfo), c4, return FALSE);
     TRACEMS2(dinfo, 4, JXRTRC_DIR_NUM_ELEMS, i, c4);
     dinfo->ifd_entry_list[i]->num_elements = c4;
     
     /* Element values, or offset where they can be found */
     /* Offset used if num_elements * sizeof(element_type) is more that
      * 4-bytes.  */
-    INPUT_4BYTES_LE(dinfo, c4, return FALSE);
+    INPUT_4BYTES_LE(((j_common_ptr)dinfo), c4, return FALSE);
     TRACEMS2(dinfo, 4, JXRTRC_DIR_VALUES, i, c4);
     dinfo->ifd_entry_list[i]->values_or_offset = c4;
   }
   
   /* Linked list to next directory */
-  INPUT_4BYTES_LE(dinfo, c4, return FALSE);
+  INPUT_4BYTES_LE(((j_common_ptr)dinfo), c4, return FALSE);
   if (c4 != 0)
     TRACEMS1(dinfo, 2, JXRTRC_DIR_NEXT_IFD, c4);
   else
@@ -194,13 +194,13 @@ jpegxr_dir_read_ifd_entries (j_dir_ptr dinfo)
 	TRACEMSS(dinfo,3,JXRTRC_DIR_READ_ENTRY, GetString_JXR_FIELD_TAG(ifde->field_tag) );
 	/* Always 16 elements so have to read from stream */
 	/* Seek to correct offset */
-	(*dinfo->src->seek_input_data) (dinfo, (long) ifde->values_or_offset);
+	(*dinfo->src->seek_input_data) (((j_common_ptr)dinfo), (long) ifde->values_or_offset);
 	INPUT_RELOAD(dinfo);
 	/* Size depends on type */
 	switch (ifde->element_type) {
 	  case (JELEMTYPE_BYTE):
 	    for (int i=0; i<ifde->num_elements; i++) {
-	      INPUT_BYTE(dinfo,c,return FALSE);
+	      INPUT_BYTE(((j_common_ptr)dinfo),c,return FALSE);
 	      TRACEMS3(dinfo,4,JXRTRC_DIR_READ_ENTRY_MULTIPLE, i+1, ifde->num_elements, c);
 	      dinfo->pixel_format[i] = c;
 	    }
