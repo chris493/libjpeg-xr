@@ -20,41 +20,45 @@
 #endif
 
 /*
- * Parse the DC component quantisation paramter set.
+ * Parse the DC component quantisation parameter set.
  *  
  */          
 LOCAL(boolean)
 parse_dc_qp (j_image_ptr iinfo)
 {
-  TRACEMS(iinfo,2,JXRTRC_PARSE_DC_QP);
+  UINT8 b;  // for <=8 bits
+  
+  INPUT_VARS(iinfo);
+  
+  TRACEMS2(iinfo,2,JXRTRC_PARSE_DC_QP, idx, bit_idx);
   
   int num_components = 0;
   
   /* Parse or infer component mode */
   if (num_components != 1) {
     INPUT_BITS(((j_common_ptr)iinfo),b,2,return FALSE);
-    iinfo->img_plane_hdr->component_mode = b;
+    iinfo->img_plane_hdr->dc_qp.component_mode = b;
   } else {
-    iinfo->img_plane_hdr->component_mode = JCOMPMODE_UNIFORM;
+    iinfo->img_plane_hdr->dc_qp.component_mode = JCOMPMODE_UNIFORM;
   }
   
   /* Parse any relevant quantisation parameters */
-  if (iinfo->img_plane_hdr->component_mode == JCOMPMODE_UNIFORM) {
+  if (iinfo->img_plane_hdr->dc_qp.component_mode == JCOMPMODE_UNIFORM) {
     INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
-    iinfo->img_plane_hdr->dc_quant = b;
-  } else if (iinfo->img_plane_hdr->component_mode == JCOMPMODE_SEPARATE) {
+    iinfo->img_plane_hdr->dc_qp.quant = b;
+  } else if (iinfo->img_plane_hdr->dc_qp.component_mode == JCOMPMODE_SEPARATE) {
     INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
-    iinfo->img_plane_hdr->dc_quant_luma = b;
+    iinfo->img_plane_hdr->dc_qp.quant_luma = b;
     INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
-    iinfo->img_plane_hdr->dc_quant_chroma = b;
-  } else if (iinfo->img_plane_hdr->component_mode == JCOMPMODE_INDEPENDENT) {
+    iinfo->img_plane_hdr->dc_qp.quant_chroma = b;
+  } else if (iinfo->img_plane_hdr->dc_qp.component_mode == JCOMPMODE_INDEPENDENT) {
     for (int i = 0; i<num_components; i++) {
       INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
-      iinfo->img_plane_hdr->dc_quant_ch[i] = b;
+      iinfo->img_plane_hdr->dc_qp.quant_ch[i] = b;
     }
   }
 
-
+  INPUT_SYNC(iinfo);
 
   return TRUE;
 }
@@ -65,10 +69,43 @@ parse_dc_qp (j_image_ptr iinfo)
 LOCAL(boolean)
 parse_lp_qp (j_image_ptr iinfo, unsigned int num_qps)
 {
-  TRACEMS(iinfo,2,JXRTRC_PARSE_LP_QP);
+  UINT8 b;  // for <=8 bits
   
+  INPUT_VARS(iinfo);
+    
+  TRACEMS2(iinfo,2,JXRTRC_PARSE_LP_QP, idx, bit_idx);
+  
+  int num_components = 0;
+  
+  /* Parse or infer component mode */
+  if (num_components != 1) {
+    INPUT_BITS(((j_common_ptr)iinfo),b,2,return FALSE);
+    iinfo->img_plane_hdr->lp_qp.component_mode = b;
+  } else {
+    iinfo->img_plane_hdr->lp_qp.component_mode = JCOMPMODE_UNIFORM;
+  }
+  
+  /* Parse any relevant quantisation parameters */
+  if (iinfo->img_plane_hdr->lp_qp.component_mode == JCOMPMODE_UNIFORM) {
+    INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
+    iinfo->img_plane_hdr->lp_qp.quant = b;
+  } else if (iinfo->img_plane_hdr->lp_qp.component_mode == JCOMPMODE_SEPARATE) {
+    INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
+    iinfo->img_plane_hdr->lp_qp.quant_luma = b;
+    INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
+    iinfo->img_plane_hdr->lp_qp.quant_chroma = b;
+  } else if (iinfo->img_plane_hdr->lp_qp.component_mode == JCOMPMODE_INDEPENDENT) {
+    for (int i = 0; i<num_components; i++) {
+      INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
+      iinfo->img_plane_hdr->lp_qp.quant_ch[i] = b;
+    }
+  }
+
+  INPUT_SYNC(iinfo);
+
   return TRUE;
 }
+
 /*
  * Parse the high pass quantisation paramter set.
  *  
@@ -76,8 +113,40 @@ parse_lp_qp (j_image_ptr iinfo, unsigned int num_qps)
 LOCAL(boolean)
 parse_hp_qp (j_image_ptr iinfo, unsigned int num_qps)
 {
-  TRACEMS(iinfo,2,JXRTRC_PARSE_HP_QP);
+  UINT8 b;  // for <=8 bits
   
+  INPUT_VARS(iinfo);
+  
+  TRACEMS2(iinfo,2,JXRTRC_PARSE_HP_QP, idx, bit_idx);
+  
+  int num_components = 0;
+  
+  /* Parse or infer component mode */
+  if (num_components != 1) {
+    INPUT_BITS(((j_common_ptr)iinfo),b,2,return FALSE);
+    iinfo->img_plane_hdr->hp_qp.component_mode = b;
+  } else {
+    iinfo->img_plane_hdr->hp_qp.component_mode = JCOMPMODE_UNIFORM;
+  }
+  
+  /* Parse any relevant quantisation parameters */
+  if (iinfo->img_plane_hdr->hp_qp.component_mode == JCOMPMODE_UNIFORM) {
+    INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
+    iinfo->img_plane_hdr->hp_qp.quant = b;
+  } else if (iinfo->img_plane_hdr->hp_qp.component_mode == JCOMPMODE_SEPARATE) {
+    INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
+    iinfo->img_plane_hdr->hp_qp.quant_luma = b;
+    INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
+    iinfo->img_plane_hdr->hp_qp.quant_chroma = b;
+  } else if (iinfo->img_plane_hdr->hp_qp.component_mode == JCOMPMODE_INDEPENDENT) {
+    for (int i = 0; i<num_components; i++) {
+      INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
+      iinfo->img_plane_hdr->hp_qp.quant_ch[i] = b;
+    }
+  }
+  
+  INPUT_SYNC(iinfo);
+
   return TRUE;
 }
 
@@ -149,7 +218,7 @@ jpegxr_image_read_header (j_image_ptr iinfo)
   TRACEMS1(iinfo,3,JXRTRC_HARD_TILING,hdr.hard_tiling_flag);
   // reserved C (3 bits)
   hdr.reserved_c = GETBITS(c,5,3);
-  if (hdr.reserved_c != 1) TRACEMS(iinfo,0,JXRTRC_FUTURE_SPEC);
+  if (hdr.reserved_c != 1) TRACEMSS(iinfo,0,JXRTRC_FUTURE_SPEC,"RESERVED_C");
   
   /* Read in second byte */
   INPUT_BYTE(((j_common_ptr)iinfo),c,return FALSE);
@@ -175,7 +244,7 @@ jpegxr_image_read_header (j_image_ptr iinfo)
   // overlap_mode (2 bits)
   hdr.overlap_mode = GETBITS(c,6,2);
   TRACEMS1(iinfo,3,JXRTRC_OVERLAP_MODE, hdr.overlap_mode);
-  if (hdr.overlap_mode == 3) TRACEMS(iinfo,0,JXRTRC_RESERVED_VALUE);
+  if (hdr.overlap_mode == 3) TRACEMSS(iinfo,0,JXRTRC_RESERVED_VALUE,"OVERLAP_MODE");
   
   /* Read in third byte */
   INPUT_BYTE(((j_common_ptr)iinfo),c,return FALSE);
@@ -193,7 +262,7 @@ jpegxr_image_read_header (j_image_ptr iinfo)
   TRACEMS1(iinfo,3,JXRTRC_TRIM_FLEXBITS, hdr.trim_flexbits_flag);
   // reserved_d (3 bits)
   hdr.reserved_d = GETBITS(c,4,3);
-  if (hdr.reserved_d !=0) TRACEMS(iinfo,0,JXRTRC_RESERVED_VALUE);
+  if (hdr.reserved_d !=0) TRACEMSS(iinfo,0,JXRTRC_RESERVED_VALUE,"RESERVED_D");
   // alpha_image_plane_flag
   hdr.alpha_image_plane_flag = GETBITS(c,7,1);
   TRACEMS1(iinfo,3,JXRTRC_ALPHA_IMAGE_PLANE, hdr.alpha_image_plane_flag);
@@ -309,21 +378,27 @@ jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
   
   /* Definitions to output enum strings */
   DEFINE_ENUM( JXR_BANDS_PRESENT, JXR_BANDS_PRESENT_DEF );
-    
+  DEFINE_ENUM( JXR_INTERNAL_CLR_FMT, JXR_INTERNAL_CLR_FMT_DEF );
+  
   INPUT_VARS(iinfo);
 
   /* Read in first byte */
   INPUT_BYTE(((j_common_ptr)iinfo),c,return FALSE);
   // internal colour format (3 bits)
   phdr.internal_clr_fmt = GETBITS(c,0,3);
+  TRACEMSS(iinfo,3,JXRTRC_INTERNAL_CLR_FORMAT,
+    GetString_JXR_INTERNAL_CLR_FMT( phdr.internal_clr_fmt) );
   // scaled flag
   phdr.scaled_flag = GETBITS(c,3,1);
-  TRACEMS1(iinfo,2,JXRTRC_SCALED_FLAG,phdr.scaled_flag);
+  TRACEMS1(iinfo,3,JXRTRC_SCALED_FLAG,phdr.scaled_flag);
   // bands present (4 bits)
   phdr.bands_present = GETBITS(c,4,4);
-  TRACEMSS(iinfo,2,JXRTRC_BANDS_PRESENT, GetString_JXR_BANDS_PRESENT(phdr.bands_present));
+  TRACEMSS(iinfo,3,JXRTRC_BANDS_PRESENT, GetString_JXR_BANDS_PRESENT(phdr.bands_present));
   
   /* Internal colour format specific parameters */
+  // Defaults
+  phdr.chroma_centering_x = 0;
+  phdr.chroma_centering_y = 0;
   if (phdr.internal_clr_fmt ==  JINTCOL_YUV444 ||
       phdr.internal_clr_fmt ==  JINTCOL_YUV420 ||
       phdr.internal_clr_fmt ==  JINTCOL_YUV422) {
@@ -335,18 +410,34 @@ jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
     if (phdr.internal_clr_fmt == JINTCOL_YUV420 ||
         phdr.internal_clr_fmt == JINTCOL_YUV422) {
       phdr.reserved_e_bit = GETBITS(c,0,1);
+      if (phdr.reserved_e_bit != 0) TRACEMSS(iinfo,0,JXRTRC_FUTURE_SPEC,"RESERVED_E_BIT");
       phdr.chroma_centering_x = GETBITS(c,1,3);
+      TRACEMS1(iinfo,3,JXTRC_CHROMA_CENTRE_X,phdr.chroma_centering_x);
+      // check for reserved values
+      if (phdr.chroma_centering_x == 5 || phdr.chroma_centering_x == 6) {
+        phdr.chroma_centering_x = 7;
+        TRACEMSS(iinfo,0,JXRTRC_RESERVED_VALUE,"CHROMA_CENTERING_X");
+      }
     } else if (phdr.internal_clr_fmt == JINTCOL_YUV444)
       phdr.reserved_f = GETBITS(c,0,4);
+      if (phdr.reserved_f != 0) TRACEMSS(iinfo,0,JXRTRC_FUTURE_SPEC,"RESERVED_F");
     /* Last four bits */
     if (phdr.internal_clr_fmt == JINTCOL_YUV420) {
       phdr.reserved_g_bit = GETBITS(c,4,1);
+      if (phdr.reserved_g_bit != 0) TRACEMSS(iinfo,0,JXRTRC_FUTURE_SPEC,"RESERVED_G_BIT");
       phdr.chroma_centering_y = GETBITS(c,5,3);
+      TRACEMS1(iinfo,3,JXTRC_CHROMA_CENTRE_Y,phdr.chroma_centering_y);
+      // check for reserved values
+      if (phdr.chroma_centering_y == 5 || phdr.chroma_centering_y == 6) {
+        phdr.chroma_centering_y = 7;
+        TRACEMSS(iinfo,0,JXRTRC_RESERVED_VALUE,"CHROMA_CENTERING_Y");
+      }
     } else
       phdr.reserved_h = GETBITS(c,4,4);
+      if (phdr.reserved_h != 0) TRACEMSS(iinfo,0,JXRTRC_FUTURE_SPEC,"RESERVED_H");
     
   } else if (phdr.internal_clr_fmt == JINTCOL_NCOMPONENT) {
-    
+    // TODO - test and output etc etc
     /* Here we require one OR two bytes of colour format specific stuff */
     INPUT_BYTE(((j_common_ptr)iinfo), c, return FALSE);
     /* First four bits */
@@ -363,10 +454,11 @@ jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
         
   } else if (phdr.internal_clr_fmt ==  JINTCOL_RESERVED1 ||
              phdr.internal_clr_fmt ==  JINTCOL_RESERVED2) {
-    TRACEMS(iinfo,0,JXRTRC_RESERVED_VALUE);
+    TRACEMSS(iinfo,0,JXRTRC_RESERVED_VALUE,"INTERNAL_COLOUR_FORMAT");
   }
   
   /* Output bit depth specific parameters */
+  // TODO check and output
   INPUT_BYTE(((j_common_ptr)iinfo), c,return FALSE);
   if (iinfo->hdr->output_bitdepth == JOUTDEP_BD16  ||
       iinfo->hdr->output_bitdepth == JOUTDEP_BD16S ||
@@ -380,24 +472,29 @@ jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
   } else if (
       iinfo->hdr->output_bitdepth == JOUTDEP_RESERVED1 ||
       iinfo->hdr->output_bitdepth == JOUTDEP_RESERVED2) {
-        TRACEMS(iinfo,0,JXRTRC_RESERVED_VALUE);
+        TRACEMSS(iinfo,0,JXRTRC_RESERVED_VALUE,"OUTPUT_BITDEPTH");
   }
+  
 
   /* QP sets (unfortunately these aren't nicely byte aligned) */
   INPUT_BITS(((j_common_ptr)iinfo),b,1,return FALSE);
   // dc_image_plane_uniform_flag
+  TRACEMS1(iinfo,3,JXTRC_DC_UNIFORM,b);
   phdr.dc_image_plane_uniform_flag = b;
+  
   // read in DC QPs if they are the same for all tiles
   if (phdr.dc_image_plane_uniform_flag)
     parse_dc_qp(iinfo);
   // read in low and high pass QPs if they are the same for all tiles
   if (phdr.bands_present == JBANDS_RESERVED) {
-    TRACEMS(iinfo,0,JXRTRC_RESERVED_VALUE);
+    TRACEMSS(iinfo,0,JXRTRC_RESERVED_VALUE,"BANDS_PRESENT");
   } else if (phdr.bands_present != JBANDS_DCONLY) {
     INPUT_BITS(((j_common_ptr)iinfo),b,1,return FALSE);
     phdr.reserved_i_bit = b;
     INPUT_BITS(((j_common_ptr)iinfo),b,1,return FALSE);
     phdr.lp_image_plane_uniform_flag = b;
+    TRACEMS1(iinfo,3,JXTRC_LP_UNIFORM,b);
+    
     // low pass
     if (phdr.lp_image_plane_uniform_flag) {
       parse_lp_qp(iinfo,1);
@@ -408,13 +505,17 @@ jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
       phdr.reserved_j_bit = b;
       INPUT_BITS(((j_common_ptr)iinfo),b,1,return FALSE);
       phdr.hp_image_plane_uniform_flag = b;
+      TRACEMS1(iinfo,3,JXTRC_HP_UNIFORM,b);
+      
       if (phdr.hp_image_plane_uniform_flag) {
         parse_hp_qp(iinfo,1);
       }
     }
   }
+  
+  
   // Remainder of byte is just byte alignment padding
-
+  INPUT_ALIGN(iinfo);
 
   INPUT_SYNC(iinfo);
   

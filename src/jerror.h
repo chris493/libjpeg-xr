@@ -202,7 +202,7 @@ JMESSAGE(JXRWRN_IMAGE_INCOMPATIBLE, "Warning: codestream is probably incompatibl
 
 /* Trace messages */
 JMESSAGE(JXRTRC_FILE_BEGIN_META, "Reading file metadata")
-JMESSAGE(JXRTRC_FILE_BEGIN, "Parsing file header")
+JMESSAGE(JXRTRC_FILE_BEGIN, "Parsing file header at offset 0x%x")
 JMESSAGE(JXRTRC_FILE_HEADER,
   "Found correct fixed length prefix 0x%x and 0x%x")
 JMESSAGE(JXRTRC_FILE_VERSION_MATCH,
@@ -213,7 +213,7 @@ JMESSAGE(JXRTRC_FILE_OFFSET, "Found first IFD offset at 0x%x")
 JMESSAGE(JXRTRC_SEEK_DIR, "Seeking to IFD at offset 0x%x")
 JMESSAGE(JXRTRC_CREATE_DIR, "Creating IFD object")
 JMESSAGE(JXRTRC_DIR_BEGIN_META, "Reading directory (IFD) metadata")
-JMESSAGE(JXRTRC_DIR_BEGIN, "Parsing IFD header")
+JMESSAGE(JXRTRC_DIR_BEGIN, "Parsing IFD header at offset 0x%x")
 
 JMESSAGE(JXRTRC_DIR_NUM_IFD_ENTRIES, "Directory contains %u IFD entries")
 JMESSAGE(JXRTRC_DIR_FIELD_TAG, "IFD entry %u has field tag %s")
@@ -236,10 +236,10 @@ JMESSAGE(JXRTRC_DIR_IGNORE_ENTRY,
 JMESSAGE(JXRTRC_SEEK_IMAGE, "Seeking to coded image at offset 0x%x")
 JMESSAGE(JXRTRC_CREATE_IMAGE, "Creating coded image object")
 JMESSAGE(JXRTRC_IMAGE_BEGIN, "Reading coded image metadata")
-JMESSAGE(JXRTRC_IMAGE_HEAD_BEGIN, "Parsing coded image header")
+JMESSAGE(JXRTRC_IMAGE_HEAD_BEGIN, "Parsing coded image header at offset 0x%x")
 JMESSAGE(JXRTRC_GDI_SIG, "Found correct GDI signature 0x%x%x")
-JMESSAGE(JXRTRC_FUTURE_SPEC, "Caution: codestream is from a future specification")
-JMESSAGE(JXRTRC_RESERVED_VALUE, "Caution: found a reserved value")
+JMESSAGE(JXRTRC_FUTURE_SPEC, "Caution: codestream is from a future specification based on value of %s")
+JMESSAGE(JXRTRC_RESERVED_VALUE, "Caution: found a reserved value for %s")
 JMESSAGE(JXRTRC_HARD_TILING, "Hard tiling flag set to %u")
 JMESSAGE(JXRTRC_TILING, "Tiling flag set to %u")
 JMESSAGE(JXRTRC_FREQ_MODE, "Frequency mode flag set to %u")
@@ -260,22 +260,23 @@ JMESSAGE(JXRTRC_TILE_HSEQUENCE, "Horizontal tile %u of %u is %u macroblocks wide
 JMESSAGE(JXRTRC_TILE_VSEQUENCE, "Vertical tile %u of %u is %u macroblocks tall")
 JMESSAGE(JXRTRC_WINDOW_MARGIN, "Window margins: top=%u; bottom=%u; left=%u; right=%u")
 
-JMESSAGE(JXRTRC_IMAGE_PLANE_BEGIN, "Parsing image plane header, current plane alpha flag is %u")
+JMESSAGE(JXRTRC_IMAGE_PLANE_BEGIN, "Parsing image plane header at offset 0x%x, current plane alpha flag is %u")
 
+JMESSAGE(JXRTRC_INTERNAL_CLR_FORMAT, "Internal colour format is %s")
 JMESSAGE(JXRTRC_SCALED_FLAG, "Scaled flag set to %u")
 JMESSAGE(JXRTRC_BANDS_PRESENT, "Codestream contains frequency components %s")
-//JMESSAGE(JXRTRC_WINDOW_MARGIN, "")
-//JMESSAGE(JXRTRC_WINDOW_MARGIN, "")
-//JMESSAGE(JXRTRC_WINDOW_MARGIN, "")
-//JMESSAGE(JXRTRC_WINDOW_MARGIN, "")
-//JMESSAGE(JXRTRC_WINDOW_MARGIN, "")
-//JMESSAGE(JXRTRC_WINDOW_MARGIN, "")
-//JMESSAGE(JXRTRC_WINDOW_MARGIN, "")
-//JMESSAGE(JXRTRC_WINDOW_MARGIN, "")
 
-JMESSAGE(JXRTRC_PARSE_DC_QP, "Parsing DC quantisation parameter set")
-JMESSAGE(JXRTRC_PARSE_LP_QP, "Parsing low pass quantisation parameter set")
-JMESSAGE(JXRTRC_PARSE_HP_QP, "Parsing high pass quantisation parameter set")
+JMESSAGE(JXTRC_CHROMA_CENTRE_X, "Chroma centring X is %u")
+JMESSAGE(JXTRC_CHROMA_CENTRE_Y, "Chroma centring Y is %u")
+
+JMESSAGE(JXTRC_DC_UNIFORM, "DC image plane uniform flag set to %u")
+JMESSAGE(JXRTRC_PARSE_DC_QP, "Parsing DC quantisation parameter set at byte offset 0x%x, bit %u")
+
+JMESSAGE(JXTRC_LP_UNIFORM, "Low pass image plane uniform flag set to %u")
+JMESSAGE(JXRTRC_PARSE_LP_QP, "Parsing low pass quantisation parameter set at byte offset 0x%x, bit %u")
+
+JMESSAGE(JXTRC_HP_UNIFORM, "High pass image plane uniform flag set to %u")
+JMESSAGE(JXRTRC_PARSE_HP_QP, "Parsing high pass quantisation parameter set at byte offset 0x%x, bit %u")
 
 
 

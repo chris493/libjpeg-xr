@@ -61,6 +61,15 @@
 		V = V << num_bits; \
 		V += GETBITS( (GETJOCTET(*next_input_byte++)),(bit_idx),(8-(bit_idx))); \
 	      }
+/* Skip to the start of the next byte, unless already byte aligned. Should
+ * be used after INPUT_BITS has been called one or more times, and before
+ * any other input macros are used.
+ */
+#define INPUT_ALIGN(cinfo)  \
+	if (bit_idx != 0) { \
+	  UINT8 dummy; \
+	  INPUT_BITS(cinfo,dummy,(8-bit_idx),return FALSE); \
+	}
 
 /* Read a byte into variable V.
  * If must suspend, take the specified action (typically "return FALSE").
