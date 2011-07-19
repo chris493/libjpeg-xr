@@ -20,19 +20,21 @@
 	const JOCTET * next_input_byte = datasrc->next_input_byte;  \
 	size_t bytes_in_buffer = datasrc->bytes_in_buffer;  \
 	long idx = datasrc->idx; \
-	unsigned char bit_idx = 0
+	unsigned char bit_idx = datasrc->bit_idx
 
 /* Unload the local copies --- do this only at a restart boundary */
 #define INPUT_SYNC(cinfo)  \
 	( datasrc->next_input_byte = next_input_byte,  \
 	  datasrc->bytes_in_buffer = bytes_in_buffer,	\
-	  datasrc->idx = idx	)
+	  datasrc->idx = idx,	\
+	  datasrc->bit_idx = bit_idx	)
 
 /* Reload the local copies --- used only in MAKE_BYTE_AVAIL */
 #define INPUT_RELOAD(cinfo)  \
 	( next_input_byte = datasrc->next_input_byte,  \
 	  bytes_in_buffer = datasrc->bytes_in_buffer,	\
-	  idx = datasrc->idx	)
+	  idx = datasrc->idx,	\
+	  bit_idx = datasrc->bit_idx	)
 
 /* Internal macro for INPUT_BYTE and INPUT_2BYTES: make a byte available.
  * Note we do *not* do INPUT_SYNC before calling fill_input_buffer,

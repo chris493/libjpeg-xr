@@ -256,4 +256,5 @@ jpeg_stdio_src (j_common_ptr cinfo, FILE * infile)
   src->pub.bytes_in_buffer = 0; /* forces fill_input_buffer on first read */
   src->pub.next_input_byte = NULL; /* until buffer loaded */
   src->pub.idx = 0; /* start of the stream */
+  src->pub.bit_idx = 0;
 }

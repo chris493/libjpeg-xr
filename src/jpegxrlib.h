@@ -286,12 +286,12 @@ DECLARE_ENUM(JXR_BANDS_PRESENT,JXR_BANDS_PRESENT_DEF)
 
 /* Component mode, specifies whether the same QP set should be used 
  * across components. */
-typedef enum {
-      JCOMPMODE_UNIFORM,
-      JCOMPMODE_SEPARATE,
-      JCOMPMODE_INDEPENDENT,
-      JCOMPMODE_RESERVED
-} JXR_COMPONENT_MODE;
+ #define JXR_COMPONENT_MODE_DEF(XX) \
+      XX(JCOMPMODE_UNIFORM,      =0)	\
+      XX(JCOMPMODE_SEPARATE,       )	\
+      XX(JCOMPMODE_INDEPENDENT,    )	\
+      XX(JCOMPMODE_RESERVED,	   )
+DECLARE_ENUM(JXR_COMPONENT_MODE,JXR_COMPONENT_MODE_DEF)
 
 /* QP (quantisation parameter) set */
 typedef struct {
@@ -625,6 +625,7 @@ struct jpeg_source_mgr {
   const JOCTET * next_input_byte; /* => next byte to read from buffer */
   size_t bytes_in_buffer;	/* # of bytes remaining in buffer */
   long idx;	/* Index from the start of the source stream  */
+  unsigned char bit_idx;
 
   JMETHOD(void, init_source, (j_common_ptr cinfo));
   JMETHOD(boolean, fill_input_buffer, (j_common_ptr cinfo));
