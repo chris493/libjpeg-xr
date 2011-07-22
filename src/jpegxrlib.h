@@ -334,6 +334,9 @@ typedef struct {
   UINT8 num_components_minus1; /* 4 bits */
   /* Used if 16 or more components */
   UINT16 num_components_extended_minus16; /* 12 bits */
+  
+  // This is the actual number of components
+  unsigned int num_components;
 
   /* Fields for output formatting */
   /* Present if output_bitdepth is BD16, BD16S or BD32S */

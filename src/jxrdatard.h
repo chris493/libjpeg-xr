@@ -56,12 +56,13 @@
 		V = GETBITS( (GETJOCTET(*next_input_byte)),(bit_idx),(num_bits)); \
 		bit_idx += num_bits; \
 	      } else { \
-		V = GETBITS( (GETJOCTET(*next_input_byte)),(bit_idx),8-(bit_idx)); \
-		bit_idx = 0; \
+		V = GETBITS( (GETJOCTET(*next_input_byte++)),(bit_idx),(8-(bit_idx))); \
+		bit_idx = num_bits - (8-(bit_idx)); \
 		bytes_in_buffer--; \
 		idx++; \
-		V = V << num_bits; \
-		V += GETBITS( (GETJOCTET(*next_input_byte++)),(bit_idx),(8-(bit_idx))); \
+		V = V << bit_idx; \
+		MAKE_BYTE_AVAIL(cinfo,action); \
+		V = V | ((GETBITS( (GETJOCTET(*next_input_byte)),0,bit_idx)) ); \
 	      }
 /* Skip to the start of the next byte, unless already byte aligned. Should
  * be used after INPUT_BITS has been called one or more times, and before

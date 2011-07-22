@@ -19,12 +19,40 @@
 #include "jxrdatard.h"
 #endif
 
+/* Determine number of colour components, based on INTERNAL_CLR_FMT,
+ * NUM_COMPONENTs_MINUS1 and NUM_COMPONENTS_EXTENDED_MINUS16, which must
+ * all have been set (if they exist in the codestream) before calling.
+ */
+LOCAL(unsigned int)
+determine_num_components(jxr_image_plane_header phdr) {
+  
+  unsigned int num_components;
+  
+  if (phdr.internal_clr_fmt == JINTCOL_NCOMPONENT) {
+    if (phdr.num_components_minus1 == 0xf)
+      num_components = phdr.num_components_extended_minus16 + 16;
+    else
+      num_components = phdr.num_components_minus1 + 1;
+  } else if (phdr.internal_clr_fmt == JINTCOL_YONLY) {
+    num_components = 1;
+  } else if ( phdr.internal_clr_fmt == JINTCOL_YUV420 ||
+              phdr.internal_clr_fmt == JINTCOL_YUV422 ||
+              phdr.internal_clr_fmt == JINTCOL_YUV444  ) {
+    num_components = 3;
+  } else if (phdr.internal_clr_fmt == JINTCOL_YUVK) {
+    num_components = 4;
+  }
+    
+  return num_components;
+}
+
+
 /*
  * Parse the DC component quantisation parameter set.
  *  
  */          
 LOCAL(boolean)
-parse_dc_qp (j_image_ptr iinfo)
+parse_dc_qp (j_image_ptr iinfo, unsigned int num_components)
 {
   UINT8 b;  // for <=8 bits
   DEFINE_ENUM( JXR_COMPONENT_MODE, JXR_COMPONENT_MODE_DEF );
@@ -32,8 +60,6 @@ parse_dc_qp (j_image_ptr iinfo)
   INPUT_VARS(iinfo);
   
   TRACEMS2(iinfo,2,JXRTRC_PARSE_DC_QP, idx, bit_idx);
-  
-  int num_components = 0;
   
   /* Parse or infer component mode */
   if (num_components != 1) {
@@ -47,23 +73,30 @@ parse_dc_qp (j_image_ptr iinfo)
   if (iinfo->img_plane_hdr->dc_qp.component_mode == JCOMPMODE_UNIFORM) {
     INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
     iinfo->img_plane_hdr->dc_qp.quant = b;
-    printf("UNIFORM component mode, DC parameter %u\n",
+    printf("UNIFORM component mode: quantisation parameter is %u\n",
       iinfo->img_plane_hdr->dc_qp.quant);
   } else if (iinfo->img_plane_hdr->dc_qp.component_mode == JCOMPMODE_SEPARATE) {
     INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
     iinfo->img_plane_hdr->dc_qp.quant_luma = b;
     INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
     iinfo->img_plane_hdr->dc_qp.quant_chroma = b;
-        printf("SEPERATE component mode, DC luma parameter %u, chroma paramter %u\n",
+    printf("SEPERATE component mode: luma parameter %u, chroma parameter %u\n",
       iinfo->img_plane_hdr->dc_qp.quant_luma,
       iinfo->img_plane_hdr->dc_qp.quant_chroma);
   } else if (iinfo->img_plane_hdr->dc_qp.component_mode == JCOMPMODE_INDEPENDENT) {
+    // allocate memory
+    UINT8 * quant_ch = (*iinfo->mem->alloc_small) (
+          (j_common_ptr) iinfo,
+          JPOOL_IMAGE,
+          num_components * SIZEOF(UINT8)
+      );
+    iinfo->img_plane_hdr->dc_qp.quant_ch = quant_ch;
     for (int i = 0; i<num_components; i++) {
       INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
       iinfo->img_plane_hdr->dc_qp.quant_ch[i] = b;
-    printf("INDEPENDENT component mode,  DC parameter %u of %u is %u\n",
-      i, num_components,
-      iinfo->img_plane_hdr->dc_qp.quant_ch[i]);
+      printf("INDEPENDENT component mode: quantisation parameter %u of %u is %u\n",
+        i+1, num_components,
+        iinfo->img_plane_hdr->dc_qp.quant_ch[i]);
     }
   } else {
     TRACEMSS(iinfo,0,JXRTRC_RESERVED_VALUE,"COMPONENT_MODE");
@@ -78,7 +111,7 @@ parse_dc_qp (j_image_ptr iinfo)
  *  
  */          
 LOCAL(boolean)
-parse_lp_qp (j_image_ptr iinfo, unsigned int num_qps)
+parse_lp_qp (j_image_ptr iinfo, unsigned int num_components, unsigned int num_qps)
 {
   UINT8 b;  // for <=8 bits
   DEFINE_ENUM( JXR_COMPONENT_MODE, JXR_COMPONENT_MODE_DEF );
@@ -87,7 +120,6 @@ parse_lp_qp (j_image_ptr iinfo, unsigned int num_qps)
     
   TRACEMS2(iinfo,2,JXRTRC_PARSE_LP_QP, idx, bit_idx);
   
-  int num_components = 0;
   
   /* Parse or infer component mode */
   if (num_components != 1) {
@@ -101,22 +133,29 @@ parse_lp_qp (j_image_ptr iinfo, unsigned int num_qps)
   if (iinfo->img_plane_hdr->lp_qp.component_mode == JCOMPMODE_UNIFORM) {
     INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
     iinfo->img_plane_hdr->lp_qp.quant = b;
-    printf("UNIFORM component mode, low pass parameter %u\n",
+    printf("UNIFORM component mode: quantisation parameter is %u\n",
       iinfo->img_plane_hdr->lp_qp.quant);
   } else if (iinfo->img_plane_hdr->lp_qp.component_mode == JCOMPMODE_SEPARATE) {
     INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
     iinfo->img_plane_hdr->lp_qp.quant_luma = b;
     INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
     iinfo->img_plane_hdr->lp_qp.quant_chroma = b;
-        printf("SEPERATE component mode, low pass luma parameter %u, chroma paramter %u\n",
+      printf("SEPERATE component mode: luma parameter %u, chroma parameter %u\n",
       iinfo->img_plane_hdr->lp_qp.quant_luma,
       iinfo->img_plane_hdr->lp_qp.quant_chroma);
   } else if (iinfo->img_plane_hdr->lp_qp.component_mode == JCOMPMODE_INDEPENDENT) {
+    // allocate memory
+    UINT8 * quant_ch = (*iinfo->mem->alloc_small) (
+          (j_common_ptr) iinfo,
+          JPOOL_IMAGE,
+          num_components * SIZEOF(UINT8)
+      );
+    iinfo->img_plane_hdr->lp_qp.quant_ch = quant_ch;
     for (int i = 0; i<num_components; i++) {
       INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
       iinfo->img_plane_hdr->lp_qp.quant_ch[i] = b;
-    printf("INDEPENDENT component mode,  low pass parameter %u of %u is %u\n",
-      i, num_components,
+      printf("INDEPENDENT component mode: quantisation parameter %u of %u is %u\n",
+      i+1, num_components,
       iinfo->img_plane_hdr->lp_qp.quant_ch[i]);
     }
   } else {
@@ -133,7 +172,7 @@ parse_lp_qp (j_image_ptr iinfo, unsigned int num_qps)
  *  
  */          
 LOCAL(boolean)
-parse_hp_qp (j_image_ptr iinfo, unsigned int num_qps)
+parse_hp_qp (j_image_ptr iinfo, unsigned int num_components, unsigned int num_qps)
 {
   UINT8 b;  // for <=8 bits
   DEFINE_ENUM( JXR_COMPONENT_MODE, JXR_COMPONENT_MODE_DEF );
@@ -142,7 +181,6 @@ parse_hp_qp (j_image_ptr iinfo, unsigned int num_qps)
   
   TRACEMS2(iinfo,2,JXRTRC_PARSE_HP_QP, idx, bit_idx);
   
-  int num_components = 0;
   
   /* Parse or infer component mode */
   if (num_components != 1) {
@@ -156,22 +194,29 @@ parse_hp_qp (j_image_ptr iinfo, unsigned int num_qps)
   if (iinfo->img_plane_hdr->hp_qp.component_mode == JCOMPMODE_UNIFORM) {
     INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
     iinfo->img_plane_hdr->hp_qp.quant = b;
-    printf("UNIFORM component mode, high pass parameter %u\n",
+    printf("UNIFORM component mode: quantisation parameter is %u\n",
       iinfo->img_plane_hdr->hp_qp.quant);
   } else if (iinfo->img_plane_hdr->hp_qp.component_mode == JCOMPMODE_SEPARATE) {
     INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
     iinfo->img_plane_hdr->hp_qp.quant_luma = b;
     INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
     iinfo->img_plane_hdr->hp_qp.quant_chroma = b;
-        printf("SEPERATE component mode, high pass luma parameter %u, chroma paramter %u\n",
+      printf("SEPERATE component mode: luma parameter %u, chroma parameter %u\n",
       iinfo->img_plane_hdr->hp_qp.quant_luma,
       iinfo->img_plane_hdr->hp_qp.quant_chroma);
   } else if (iinfo->img_plane_hdr->hp_qp.component_mode == JCOMPMODE_INDEPENDENT) {
+    // allocate memory
+    UINT8 * quant_ch = (*iinfo->mem->alloc_small) (
+          (j_common_ptr) iinfo,
+          JPOOL_IMAGE,
+          num_components * SIZEOF(UINT8)
+      );
+    iinfo->img_plane_hdr->hp_qp.quant_ch = quant_ch;
     for (int i = 0; i<num_components; i++) {
       INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
       iinfo->img_plane_hdr->hp_qp.quant_ch[i] = b;
-    printf("INDEPENDENT component mode,  high pass parameter %u of %u is %u\n",
-      i, num_components,
+      printf("INDEPENDENT component mode: quantisation parameter %u of %u is %u\n",
+      i+1, num_components,
       iinfo->img_plane_hdr->hp_qp.quant_ch[i]);
     }
   } else {
@@ -451,9 +496,11 @@ jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
         phdr.chroma_centering_x = 7;
         TRACEMSS(iinfo,0,JXRTRC_RESERVED_VALUE,"CHROMA_CENTERING_X");
       }
-    } else if (phdr.internal_clr_fmt == JINTCOL_YUV444)
+    } else if (phdr.internal_clr_fmt == JINTCOL_YUV444) {
       phdr.reserved_f = GETBITS(c,0,4);
       if (phdr.reserved_f != 0) TRACEMSS(iinfo,0,JXRTRC_FUTURE_SPEC,"RESERVED_F");
+    }
+    
     /* Last four bits */
     if (phdr.internal_clr_fmt == JINTCOL_YUV420) {
       phdr.reserved_g_bit = GETBITS(c,4,1);
@@ -465,9 +512,10 @@ jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
         phdr.chroma_centering_y = 7;
         TRACEMSS(iinfo,0,JXRTRC_RESERVED_VALUE,"CHROMA_CENTERING_Y");
       }
-    } else
+    } else {
       phdr.reserved_h = GETBITS(c,4,4);
       if (phdr.reserved_h != 0) TRACEMSS(iinfo,0,JXRTRC_FUTURE_SPEC,"RESERVED_H");
+    }
     
   } else if (phdr.internal_clr_fmt == JINTCOL_NCOMPONENT) {
     // TODO - test and output etc etc
@@ -509,6 +557,9 @@ jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
   }
 
   /* QP sets (unfortunately these aren't nicely byte aligned) */
+  /* First we need the number of components */
+  phdr.num_components = determine_num_components(phdr);
+  //
   INPUT_BITS(((j_common_ptr)iinfo),b,1,return FALSE);
   // dc_image_plane_uniform_flag
   phdr.dc_image_plane_uniform_flag = b;
@@ -517,7 +568,7 @@ jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
   // read in DC QPs if they are the same for all tiles
   if (phdr.dc_image_plane_uniform_flag) {
     INPUT_SYNC(iinfo);
-    parse_dc_qp(iinfo);
+    parse_dc_qp(iinfo, phdr.num_components);
     INPUT_RELOAD(iinfo);
   }
   // read in low and high pass QPs if they are the same for all tiles
@@ -533,7 +584,7 @@ jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
     // low pass
     if (phdr.lp_image_plane_uniform_flag) {
       INPUT_SYNC(iinfo);
-      parse_lp_qp(iinfo,1);
+      parse_lp_qp(iinfo,phdr.num_components,1);
       INPUT_RELOAD(iinfo);
     }
     // high pass
@@ -546,7 +597,7 @@ jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
       
       if (phdr.hp_image_plane_uniform_flag) {
         INPUT_SYNC(iinfo);
-        parse_hp_qp(iinfo,1);
+        parse_hp_qp(iinfo,phdr.num_components,1);
         INPUT_RELOAD(iinfo);
       }
     }
@@ -554,7 +605,7 @@ jpegxr_image_read_plane_header (j_image_ptr iinfo, boolean alpha)
   
   
   // Remainder of byte is just byte alignment padding
-  INPUT_ALIGN(iinfo);
+  INPUT_ALIGN((j_common_ptr)iinfo);
 
   INPUT_SYNC(iinfo);
   

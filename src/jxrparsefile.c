@@ -46,7 +46,7 @@ jpegxr_file_read_metadata (j_file_ptr finfo)
   
   /* Skip forward to the first directory */
   TRACEMS1(finfo,2,JXRTRC_SEEK_DIR,finfo->first_ifd_offset);
-  (*finfo->src->seek_input_data) (finfo, (long) finfo->first_ifd_offset); 
+  (*finfo->src->seek_input_data) ((j_common_ptr) finfo, (long) finfo->first_ifd_offset); 
   
   /* Create directory object */
   /* These are stored in a linked list throughout the codestream.
@@ -102,9 +102,9 @@ jpegxr_file_read_header (j_file_ptr finfo)
   UINT16 c2;
   UINT32 c4;
   
-  TRACEMS(finfo,2,JXRTRC_FILE_BEGIN);
-  
   INPUT_VARS(finfo);
+  
+  TRACEMS1(finfo,2,JXRTRC_FILE_BEGIN,idx);
   
   /* Parse fixed length file prefix */
   INPUT_2BYTES(((j_common_ptr)finfo), c2, return FALSE);
