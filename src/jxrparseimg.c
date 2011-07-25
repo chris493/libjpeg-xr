@@ -526,10 +526,8 @@ read_plane_header (j_image_ptr iinfo, boolean alpha)
       }
     }
   }
-  printf("index: 0x%x\n", idx);
   // Remainder of byte is just byte alignment padding
-  INPUT_ALIGN((j_common_ptr)iinfo);
-  printf("index: 0x%x\n", idx);
+  INPUT_ALIGN((j_common_ptr)iinfo, return FALSE);
 
   
   INPUT_SYNC(iinfo);
@@ -544,7 +542,7 @@ read_plane_header (j_image_ptr iinfo, boolean alpha)
  *  
  */          
 LOCAL(int)
-vlw_esc (j_image_ptr iinfo, UINT16 * i_value, unsigned int num_index_table_entries)
+vlw_esc (j_image_ptr iinfo, UINT16 * i_value, unsigned int count)
 {
   UINT8 first_byte,second_byte;
   UINT32 four_bytes;
@@ -552,7 +550,7 @@ vlw_esc (j_image_ptr iinfo, UINT16 * i_value, unsigned int num_index_table_entri
   
   INPUT_VARS(iinfo);
   
-  for (unsigned int i=0; i<num_index_table_entries;i++) {
+  for (unsigned int i=0; i<count;i++) {
     
     INPUT_BYTE((j_common_ptr)iinfo,first_byte,return FALSE);
     if (first_byte < 0xFB) {
@@ -584,32 +582,27 @@ LOCAL(int)
 read_index_table (j_image_ptr iinfo)
 {
   UINT16 c2;
-  
+  UINT16 num_index_table_entries;
   INPUT_VARS(iinfo);
     
   TRACEMS1(iinfo,2,JXRTRC_INDEX_TABLE_BEGIN,idx);
   
-  /* Create index table */
-  jxr_index_table_tiles idx_tbl;
-  iinfo->idx_tbl = &idx_tbl;
-  
   /* Calculate number of indextable entries */  
   if (!iinfo->hdr->frequency_mode_codestream_flag) {
-    idx_tbl.num_index_table_entries =
+    num_index_table_entries =
       (iinfo->hdr->num_hor_tiles_minus1 + 1) *
       (iinfo->hdr->num_ver_tiles_minus1 + 1);
   } else {
-    idx_tbl.num_index_table_entries =
+    num_index_table_entries =
       (iinfo->hdr->num_hor_tiles_minus1 + 1) *
       (iinfo->hdr->num_ver_tiles_minus1 + 1) *
       (iinfo->vars->num_bands_of_primary);
   }
-  printf("Foud %u index table entries\n", idx_tbl.num_index_table_entries);
+  printf("Foud %u index table entries\n", num_index_table_entries);
   
   /* 16-bit start code. Values other that JXR_INDEX_TABLE_STARTCODE are
    * reserved */
   INPUT_2BYTES((j_common_ptr)iinfo,c2,return FALSE);
-  printf("startcode 0x%x\n",c2);
   if (c2 != JXR_INDEX_TABLE_STARTCODE)
     TRACEMSS(iinfo,0,JXRTRC_RESERVED_VALUE,"INDEX_TABLE_STARTCODE");
   
@@ -617,17 +610,94 @@ read_index_table (j_image_ptr iinfo)
   UINT16 * index_offset_tile = (*iinfo->mem->alloc_small) (
         (j_common_ptr) iinfo,
         JPOOL_IMAGE,
-        idx_tbl.num_index_table_entries * SIZEOF(UINT16)
+        num_index_table_entries * SIZEOF(UINT16)
   );
-  idx_tbl.index_offset_tile = &index_offset_tile;
+  iinfo->vars->index_offset_tile = &index_offset_tile;
   /* Read the index table offset entries*/
   INPUT_SYNC(iinfo);
-  vlw_esc(iinfo, index_offset_tile, idx_tbl.num_index_table_entries);
+  vlw_esc(iinfo, index_offset_tile, num_index_table_entries);
 
   /* TODO return correct code */
   return JPEG_REACHED_SOS;
 }
 
+/*
+ * Read prfile level info.
+ *  
+ */          
+LOCAL(int)
+read_profile_level_info(j_image_ptr iinfo, UINT16 * i_bytes) {
+  
+  UINT8 c;
+  UINT16 c2;
+  
+  UINT16 num_bytes = 0;
+  
+  /* Vars */
+  UINT8 profile_idc ;
+  UINT8 level_idc   ;
+  UINT16 reserved_l ; 
+  UINT8 last_flag =1;
+  
+  /* TODO - read the profile and determine if we support the image. */
+  INPUT_VARS(iinfo);
+  while (last_flag && (num_bytes<1024)) {
+    printf("Reading profile info at byte offset 0x%x\n", idx);
+    INPUT_BYTE((j_common_ptr)iinfo,c,return FALSE);
+    profile_idc = c;
+    INPUT_BYTE((j_common_ptr)iinfo,c,return FALSE);
+    level_idc   = c;
+    INPUT_2BYTES((j_common_ptr)iinfo,c2,return FALSE);
+    reserved_l   = GETBITS(c2,0,15);
+    last_flag    = GETBITS(c2,15,1);
+    num_bytes += 4;
+  }
+  INPUT_SYNC(iinfo);
+  
+  // Output result
+  printf("");
+  *i_bytes = num_bytes;
+  
+  /* TODO return correct code */
+  return JPEG_REACHED_SOS;
+  
+}
+
+
+/*
+ * Read additional bytes before the coded tiles.
+ *  
+ */          
+LOCAL(int)
+read_additional (j_image_ptr iinfo)
+{
+  UINT8 c;
+  UINT16 i_bytes;
+  
+  INPUT_VARS(iinfo);
+  
+  printf("Reading additional bytes at offset 0x%x\n", idx);
+
+  // Read subsequent bytes value
+  vlw_esc(iinfo, &iinfo->vars->subsequent_bytes, 1);
+  printf("Found %u subsequent bytes\n", iinfo->vars->subsequent_bytes);
+  if (iinfo->vars->subsequent_bytes > 0) {
+    read_profile_level_info(iinfo,&i_bytes);
+    printf("Found %u iBytes\n", i_bytes);
+    
+    // Calculate how many bytes before the coded tiles 
+    UINT16 value_additional_bytes = 
+      iinfo->vars->subsequent_bytes - i_bytes;
+      
+    printf("Skipping %u bytes (subsequent - iBytes) to coded tiles\n", value_additional_bytes);
+
+    // Skip forward by number of additional bytes
+    (*iinfo->src->skip_input_data) ((j_common_ptr) iinfo, (long) value_additional_bytes); 
+  }
+    
+  /* TODO return correct code */
+  return JPEG_REACHED_SOS;
+}
 
 /*
  * Read a JPEG-XR image to obtain headers and decompression
@@ -662,6 +732,7 @@ jpegxr_image_read_metadata (j_image_ptr iinfo)
     read_index_table (iinfo);
   
   /* Read additional bytes before coded image */
+  read_additional (iinfo);
   
   /* TODO return correct code */
   return JPEG_REACHED_SOS;

@@ -381,15 +381,6 @@ typedef struct {
 
 } jxr_image_plane_header;
 
-/* Title index table */
-typedef struct {
-  
-  /* Number of table entries */
-  UINT16 num_index_table_entries;
-  UINT64 * index_offset_tile;
-
-} jxr_index_table_tiles;
-
 /* Image variables */
 typedef struct {
 	
@@ -454,8 +445,6 @@ typedef struct {
 	 * data that precede the coded_tiles syntax element and follow the
 	 * image plane headers and the tiles index table.  */
 	UINT16 subsequent_bytes;
-	/* Number of which are RESERVED_A_BYTE elements */
-	UINT16 value_additional_bytes; 
 
 } jxr_image_vars;
 
@@ -593,12 +582,6 @@ struct jpegxr_image_struct {
   /* Headers and variables for each (image and alpha) plane */
   jxr_image_plane * image_plane;
   jxr_image_plane * alpha_plane; /* NULL if no alpha plane */
-
-  /* Tile index table */
-  /* Tiles need not be in order and there may be codestream segments of
-   * unspecified content between the tiles. The tile index table is used
-   * to locate the data that corresponds to a particular tile */
-  jxr_index_table_tiles * idx_tbl;
 
   /* Tile variables */
   jxr_tile_vars * tile_vars;

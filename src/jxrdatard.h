@@ -68,10 +68,12 @@
  * be used after INPUT_BITS has been called one or more times, and before
  * any other input macros are used.
  */
-#define INPUT_ALIGN(cinfo)  \
+#define INPUT_ALIGN(cinfo,action)  \
 	if (bit_idx != 0) { \
-	  UINT8 dummy; \
-	  INPUT_BITS(cinfo,dummy,(8-bit_idx),return FALSE); \
+	    MAKE_BYTE_AVAIL(cinfo,action); \
+	    bytes_in_buffer--; \
+	    idx++; \
+	    *next_input_byte++; \
 	}
 
 /* Read a byte into variable V.
