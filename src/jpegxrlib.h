@@ -70,6 +70,7 @@
 #define JXR_MIN_NUM_IFD_ENTRIES  5
 #define JXR_GDI_SIG_HI 0x574D5048
 #define JXR_GDI_SIG_LO 0x4F544F00
+#define JXR_INDEX_TABLE_STARTCODE 0x0001
 
 /* Data structures for images (arrays of samples and of DCT coefficients).
  * On 80x86 machines, the image arrays are too big for near pointers,
@@ -334,9 +335,6 @@ typedef struct {
   UINT8 num_components_minus1; /* 4 bits */
   /* Used if 16 or more components */
   UINT16 num_components_extended_minus16; /* 12 bits */
-  
-  // This is the actual number of components
-  unsigned int num_components;
 
   /* Fields for output formatting */
   /* Present if output_bitdepth is BD16, BD16S or BD32S */
@@ -385,10 +383,6 @@ typedef struct {
 
 /* Title index table */
 typedef struct {
-
-  /* Start of the index_table_tiles */
-  /* Values other than 0x0001 are reserved. */
-  UINT16 index_table_startcode;
   
   /* Number of table entries */
   UINT16 num_index_table_entries;
@@ -396,6 +390,194 @@ typedef struct {
 
 } jxr_index_table_tiles;
 
+/* Image variables */
+typedef struct {
+	
+	/* ith entry specifies the extended image width of component i. */
+	UINT16 * extended_width;
+	/* ith entry holds the extended image height of component i. */
+	UINT16 * extended_height;
+	
+	/* nth entry specifies the offset of the n-th tile packet from the
+	 * start of the coded image data in bytes. */
+	UINT16 * index_offset_tile;
+
+	/* For each specific triple (i, x, y), where:
+	 * 	0 <= i < NumComponents
+	 * 	0 <= x < ExtendedWidth[i]
+	 * 	0 <= y < ExtendedHeight[i]
+	 * the associated variable image_primary[i][x][y] holds the image
+	 * plane sample values associated with the component i, located at
+	 * the sample position indicated by the values x and y, for the 
+	 * primary image plane.  */
+	UINT16 *** image_primary;
+	/* For each specific triple (i, x, y), where:
+	 * 		i = 0, 0 <= x < extended_width[i]
+	 * 		0 <= y < extended_height[i]
+	 * this variable holds the image plane sample value, at the sample
+	 * position determined by the values x and y, for the alpha image
+	 * plane. */
+	UINT16 *** image_alpha;
+
+	/* Holds the value associated with the number of vertical macroblock 
+	 * partitions. */
+	UINT16 mb_height;
+	/* Holds the value associated with the number of horizontal macroblock 
+	 * partitions. */
+	UINT16 mb_width;
+
+	/* Holds the value associated with the number of tile partitions in 
+	 * the image horizontally. */
+	UINT16 num_tile_cols;
+
+	/* Holds the value associated with the number of tile partitions in 
+	 * the image vertically. */
+	UINT16 num_tile_rows;
+
+	/* ith entry holds the value associated with the macroblock index of
+	 * the top macroblock row
+	of the i-th tile row. */
+	UINT16 * top_mb_index_of_tile;
+	/* ith entry holds the value associated with the macroblock index of 
+	 * the left macroblock
+	column of the j-th tile column. */
+	UINT16 * left_mb_index_of_tile;
+	/* nth entry holds the value associated with the number of macroblocks
+	 * in the n-th tile. */
+	UINT16 * num_mb_in_tile;
+
+	/* Holds the value associated with the value of num_bands (defined
+	 * in for the primary image plane.  */
+	UINT16 num_bands_of_primary;
+
+	/* Holds the value associated with the number of bytes of subsequent
+	 * data that precede the coded_tiles syntax element and follow the
+	 * image plane headers and the tiles index table.  */
+	UINT16 subsequent_bytes;
+	/* Number of which are RESERVED_A_BYTE elements */
+	UINT16 value_additional_bytes; 
+
+} jxr_image_vars;
+
+/* Image plane variables */
+typedef struct {
+	/* Equal to TRUE if the current plane that is being
+	 * parsed or decoded is the alpha image plane; otherwise, this variable
+	 * is equal to FALSE. Also used to specify which set of image
+	 * plane variables, tile variables, and macroblock variables are being
+	 * referenced. */
+	UINT16 is_curr_plane_alpha_flag;
+
+	/* Holds the value associated with the number of color
+	 * components present in the codestream for the current image plane. For
+	 * the primary image plane, its value can be obtained by calling
+	 * DetermineNumComponents( ) (subclause 8.4.11). For the alpha image
+	 * plane, its value is equal to 1. */
+	UINT16 num_components;
+
+	/* Holds the value associated with the number of frequency
+	 * bands present in the codestream for the current image plane. Its value
+	 * can be obtained by calling DetermineNumBands( ) (subclause 8.4.4). */
+	UINT16 num_bands;
+
+	/* Holds the value associated with the number of low pass
+	 * QP sets. This variable may have a constant value over an image plane
+	 * or it may vary from tile to tile. */
+	UINT16 num_lp_qps;
+
+	/* Holds the value associated with the number of high pass
+	 * QP sets. This variable may have a constant value over an image plane
+	 * or it may vary from tile to tile. */
+	UINT16 num_hp_qps;
+
+	/* mb_qp_index_lp[MBx][MBy] holds the QP index into the table of
+	 * quantization parameters for LP coefficients, corresponding to the
+	 * macroblock indexed by MBx and MBy. The same index applies for all
+	 * color components. */
+	UINT16 ** mb_qp_index_lp;
+
+	/* mb_qp_index_hp[MBx][MBy] holds the QP index into the table of
+	 * quantization parameters for HP coefficients, corresponding to the
+	 * macroblock indexed by MBx and MBy. The same index applies for all
+	 * color components. */
+	UINT16 ** mb_qp_index_hp;
+
+	/* Given entry mb_dc_lp[MBx][MBy][i][j]: when j is equal to 0, this variable
+	 * holds the DC transform coefficient for the macroblock indexed by MBx
+	 * and MBy, associated with the color component indexed by i. For non-zero
+	 * values of the index j, this variable holds the j-th LP transform
+	 * coefficient for the macroblock indexed by MBx and MBy, and associated
+	 * with the color component indexed by i. The index j ranges from 0 to 15
+	 * for luma components of all color formats and chroma components of all
+	 * color formats except YUV 4:2:0 and YUV 4:2:2. In the YUV 4:2:0 chroma
+	 * component case, j ranges from 0 to 3, and in the YUV 4:2:2 chroma
+	 * component case, j ranges from 0 to 7. */
+	UINT16 **** mb_dc_lp;
+
+	/* Given entry mb_buffer[MBx][MBy][i][j]: this variable holds the j-th
+	 * transform coefficient - associated with the color component i − for
+	 * the macroblock indexed by MBx and MBy. The index j ranges from 0 to 255.
+	 * The ordering of the 256 transform coefficients in the macroblock is as
+	 * follows: let iBlkIndex represent the block index of a 4×4 block of
+	 * component i in the macroblock, indexed in raster scan order, with
+	 * iBlkIndex ranging from 0 to 15. Then the 16 transform coefficients
+	 * for this block (indexed in raster scan order in the block) are
+	 * represented by the values of MBBuffer[MBx][MBy][i][j], where j ranges
+	 * from (16*iBlkIndex + 0) to (16*iBlkIndex + 15), inclusive. */
+	UINT16 **** mb_buffer;
+
+	/* Given entry mb_cbp_hp[MBx][MBy][i]: this variable holds the coded block
+	 * status for the macroblock indexed by MBx and MBy, associated with the
+	 * color component indexed by i. The association of a bit of this variable
+	 * to the block in the macroblock is specified in subclause 8.7.17.1, and
+	 * a bit takes the value 1 if the corresponding block has non-zero HP
+	 * transform coefficients to be scanned. */
+	UINT16 *** mb_cbp_hp;
+
+	/* Given entry pred_dc_lp[MBx][MBy][i][j]: this variable holds the predicted
+	 * DC and LP coefficient values, for the macroblock indexed by MBx and MBy,
+	 * associated with the color component indexed by i; the index j ranges
+	 * from 0 to 6. The predicted DC value corresponds to index 0. */
+	UINT16 **** pred_dc_lp;
+
+	/* Given entry model_bits_mb_hp[MBx][MBy][i]: this variable holds the
+	 * value of the member variable MBits[i], associated with the data structure
+	 * ModelHP as defined in subclause 5.5.6, for the macroblock indexed by
+	 * MBx and MBy. The index i ranges from 0 to 1. For each macroblock, two
+	 * values are stored: one value for the luma component, and one value for
+	 * the chroma components. NOTE – The values ModelBitsMBHP[MBx][MBy][i]
+	 * are used in the parsing process to communicate the state between the
+	 * parsing of the syntax structures MB_HP( ) and MB_FLEXBITS( ). */
+	UINT16 *** model_bits_mb_hp;
+
+	/* Given entry image_plane[i][x][y]: this variable holds the sample value
+	 * associated with the color component i, located at the position
+	indicated by the values x and y, where:
+	* 		0 <= i < num_components,
+	* 		0 <= x < extended_width[i]
+	* 		0 <= y extended_height[i]
+	* for the current image plane being decoded. */
+	UINT16 *** image_plane;
+
+}  jxr_image_plane_vars;
+
+/* Tile variables */
+typedef struct {
+	
+} jxr_tile_vars;
+
+/* Macroblock variables */
+typedef struct {
+
+} jxr_mb_vars;
+
+typedef struct {
+	/* Header, used during metadata reading */
+	jxr_image_plane_header * hdr;
+	/* Global variables, used during decompression */
+	jxr_image_plane_vars * vars;
+} jxr_image_plane;
+  
 /* Master record for a JPEG-XR coded image decompression instance */
 struct jpegxr_image_struct {
   jpegxr_common_fields;		/* Fields shared with jpegxr_compress_struct */
@@ -404,11 +586,13 @@ struct jpegxr_image_struct {
   unsigned int offset;
   
   /* Image header */
-  jxr_image_header * hdr;
+  jxr_image_header 	* hdr;
+  /* Image variables */
+  jxr_image_vars 	* vars;
   
-  /* Plane headers for image and alpha planes */
-  jxr_image_plane_header * img_plane_hdr;
-  jxr_image_plane_header * alpha_plane_hdr; /* NULL if no alpha plane */
+  /* Headers and variables for each (image and alpha) plane */
+  jxr_image_plane * image_plane;
+  jxr_image_plane * alpha_plane; /* NULL if no alpha plane */
 
   /* Tile index table */
   /* Tiles need not be in order and there may be codestream segments of
@@ -416,17 +600,11 @@ struct jpegxr_image_struct {
    * to locate the data that corresponds to a particular tile */
   jxr_index_table_tiles * idx_tbl;
 
-  /* Data between headers and coded tile data */ 
-  /* Total number of bytes that precede tile data */
-  UINT64 subsequent_bytes;
-  /* Number of which are RESERVED_A_BYTE elements */
-  UINT64 value_additional_bytes;
-  /* Pointer to RESERVED_A_BYTE syntax elements*/
-  /* The use of these syntax elements are reserved for future specification
-   * by ITU-T | ISO/IEC. This decoder is based on ITU-T Rec. T832
-   * (03/2009). When present, the values of these syntax element are
-   *  ignored. */
-  UINT8 * reserved_a_bytes; 
+  /* Tile variables */
+  jxr_tile_vars * tile_vars;
+  
+  /* Macroblock variables */
+  jxr_mb_vars * mb_vars;
   
 };
 
@@ -771,8 +949,6 @@ EXTERN(int) jpegxr_dir_read_ifd_entries JPP((j_dir_ptr dinfo));
 /* Read the metadata from a coded image codestream to obtain decompression
  * parameters and details of macroblock and tile layers.*/
 EXTERN(int) jpegxr_image_read_metadata JPP((j_image_ptr iinfo));
-/* Read the start of a JPEG-XR coded image codestream. */
-EXTERN(int) jpegxr_image_read_header JPP((j_image_ptr iinfo));
 
 
 /* Destroy JPEG-XR file object. */
@@ -798,16 +974,10 @@ EXTERN(void) jpegxr_destroy JPP((j_common_ptr cinfo));
 #define JPEG_ROW_COMPLETED	3 /* Completed one iMCU row */
 #define JPEG_SCAN_COMPLETED	4 /* Completed last iMCU row of a scan */
 
-
-
-/* Default restart-marker-resync procedure for use by data source modules */
-//EXTERN(boolean) jpeg_resync_to_restart JPP((j_common_ptr cinfo,
-//					    int desired));
               
 /* These marker codes are exported since applications and data source modules
  * are likely to want to use them.
  */
-
 #define JPEG_RST0	0xD0	/* RST0 marker code */
 #define JPEG_EOI	0xD9	/* EOI marker code */
 #define JPEG_APP0	0xE0	/* APP0 marker code */
