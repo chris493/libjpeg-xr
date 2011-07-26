@@ -345,7 +345,7 @@ read_header (j_image_ptr iinfo)
   }
   
   INPUT_SYNC(iinfo);
-  
+    
   /* TODO return correct code */
   return JPEG_REACHED_SOS;
 }
@@ -464,6 +464,9 @@ read_plane_header (j_image_ptr iinfo, boolean alpha)
         
   }
   
+  /* We can now determine the number of components */
+  vars.num_components = determine_num_components(iinfo, hdr);
+  
   /* Output bit depth specific parameters */
   // TODO check and output
   INPUT_BYTE(((j_common_ptr)iinfo), c,return FALSE);
@@ -483,9 +486,6 @@ read_plane_header (j_image_ptr iinfo, boolean alpha)
   }
 
   /* QP sets (unfortunately these aren't nicely byte aligned) */
-  /* First we need the number of components */
-  vars.num_components = determine_num_components(iinfo, hdr);
-  //
   INPUT_BITS(((j_common_ptr)iinfo),b,1,return FALSE);
   // dc_image_plane_uniform_flag
   hdr.dc_image_plane_uniform_flag = b;
@@ -535,6 +535,32 @@ read_plane_header (j_image_ptr iinfo, boolean alpha)
   /* TODO return correct code */
   return JPEG_REACHED_SOS;
 }
+
+LOCAL(void)
+calculate_component_array_sizes (j_image_ptr iinfo)
+{
+  /* Allocate extended dimensions arrays */
+  UINT32 * extended_width = (*iinfo->mem->alloc_small) (
+        (j_common_ptr) iinfo,
+        JPOOL_IMAGE,
+        iinfo->image_plane->vars->num_components * SIZEOF(UINT32)
+  );
+  UINT32 * extended_height = (*iinfo->mem->alloc_small) (
+        (j_common_ptr) iinfo,
+        JPOOL_IMAGE,
+        iinfo->image_plane->vars->num_components * SIZEOF(UINT32)
+  );
+  iinfo->vars->extended_width = extended_width;
+  iinfo->vars->extended_height = extended_height;
+  /* Calculate extended dimensions for luma component */
+  iinfo->vars->extended_width[0]  = iinfo->hdr->height_minus1 + 1 +
+                                    iinfo->hdr->top_margin +
+                                    iinfo->hdr->bottom_margin;
+  iinfo->vars->extended_height[0] = iinfo->hdr->width_minus1 + 1 +
+                                    iinfo->hdr->left_margin +
+                                    iinfo->hdr->right_margin;
+}
+
 
 /*
  * Read a two, four or eight byte index element. Currently 8-bytes are
@@ -612,8 +638,8 @@ read_index_table (j_image_ptr iinfo)
         JPOOL_IMAGE,
         num_index_table_entries * SIZEOF(UINT16)
   );
-  iinfo->vars->index_offset_tile = &index_offset_tile;
-  /* Read the index table offset entries*/
+  iinfo->vars->index_offset_tile = index_offset_tile;
+  /* Read the index table offset entries */
   INPUT_SYNC(iinfo);
   vlw_esc(iinfo, index_offset_tile, num_index_table_entries);
 
@@ -648,8 +674,9 @@ read_profile_level_info(j_image_ptr iinfo, UINT16 * i_bytes) {
     INPUT_BYTE((j_common_ptr)iinfo,c,return FALSE);
     level_idc   = c;
     INPUT_2BYTES((j_common_ptr)iinfo,c2,return FALSE);
-    reserved_l   = GETBITS(c2,0,15);
-    last_flag    = GETBITS(c2,15,1);
+    // TODO - fix endianness issues
+    reserved_l   = (c2 >> 1);
+    last_flag    = (c2 & 0x0001);
     num_bytes += 4;
   }
   INPUT_SYNC(iinfo);
@@ -722,6 +749,9 @@ jpegxr_image_read_metadata (j_image_ptr iinfo)
   
   /* Read the image plane header */
   read_plane_header (iinfo, FALSE);
+
+  /* Calculate component array sizes */
+  calculate_component_array_sizes (iinfo);
   
   /* Read the alpha plane header, if one is present */
   if (iinfo->hdr->alpha_image_plane_flag)

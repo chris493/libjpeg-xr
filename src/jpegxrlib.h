@@ -385,9 +385,9 @@ typedef struct {
 typedef struct {
 	
 	/* ith entry specifies the extended image width of component i. */
-	UINT16 * extended_width;
+	UINT32 * extended_width;
 	/* ith entry holds the extended image height of component i. */
-	UINT16 * extended_height;
+	UINT32 * extended_height;
 	
 	/* nth entry specifies the offset of the n-th tile packet from the
 	 * start of the coded image data in bytes. */
