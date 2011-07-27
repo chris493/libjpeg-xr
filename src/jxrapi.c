@@ -66,6 +66,11 @@ jpegxr_file_CreateDecompress (j_file_ptr finfo, int version, size_t structsize)
     finfo->err = err;
     finfo->client_data = client_data;
   }
+  
+  /* For now we support a single directory, which we can therefore allocate
+   * now. */
+   struct jpegxr_dir_struct first_and_only_directory;
+   finfo->dirs = &first_and_only_directory;
 
   /* Common to all three objects */
   common_initialisation( (j_common_ptr) finfo );

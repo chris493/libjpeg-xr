@@ -57,7 +57,7 @@ jpegxr_dir_read_metadata (j_dir_ptr dinfo)
   
   /* Initialize the JPEG-XR code image object */
   dinfo->image->err = dinfo->err;
-  jpegxr_image_create_decompress(&iinfo); // has its own mem. manager
+  dinfo->image->mem = dinfo->mem;
   dinfo->image->progress = dinfo->progress;
   dinfo->image->src = dinfo->src;
   
@@ -116,7 +116,7 @@ jpegxr_dir_read_header (j_dir_ptr dinfo)
     /* Field tag determines type of IFD entry */
     /* We check for supported types later */
     INPUT_2BYTES_LE(((j_common_ptr)dinfo), c2, return FALSE);
-    TRACEMS2(dinfo, 3, JXRTRC_DIR_FIELD_TAG, i, GetString_JXR_FIELD_TAG(c2));
+    TRACEMS2(dinfo, 3, JXRTRC_DIR_FIELD_TAG, i, GetString_JXR_FIELD_TAG(c2) );
     dinfo->ifd_entry_list[i]->field_tag = c2;
     
     /* Element type determines length and format of elements */

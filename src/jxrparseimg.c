@@ -67,7 +67,9 @@ determine_num_components(j_image_ptr iinfo, jxr_image_plane_header hdr) {
   } else {
     TRACEMSS(iinfo,0,JXRTRC_RESERVED_VALUE,"INTERNAL_COLOUR_FORMAT");
   }
-    
+  
+  printf("Image contains %u components\n", num_components);
+  
   return num_components;
 }
 
@@ -539,26 +541,28 @@ read_plane_header (j_image_ptr iinfo, boolean alpha)
 LOCAL(void)
 calculate_component_array_sizes (j_image_ptr iinfo)
 {
+  
   /* Allocate extended dimensions arrays */
   UINT32 * extended_width = (*iinfo->mem->alloc_small) (
         (j_common_ptr) iinfo,
         JPOOL_IMAGE,
-        iinfo->image_plane->vars->num_components * SIZEOF(UINT32)
+        (iinfo->image_plane->vars->num_components) * SIZEOF(UINT32)
   );
   UINT32 * extended_height = (*iinfo->mem->alloc_small) (
         (j_common_ptr) iinfo,
         JPOOL_IMAGE,
-        iinfo->image_plane->vars->num_components * SIZEOF(UINT32)
+        (iinfo->image_plane->vars->num_components) * SIZEOF(UINT32)
   );
   iinfo->vars->extended_width = extended_width;
   iinfo->vars->extended_height = extended_height;
   /* Calculate extended dimensions for luma component */
-  iinfo->vars->extended_width[0]  = iinfo->hdr->height_minus1 + 1 +
+  extended_width[0]  = iinfo->hdr->width_minus1 + 1 +
                                     iinfo->hdr->top_margin +
                                     iinfo->hdr->bottom_margin;
-  iinfo->vars->extended_height[0] = iinfo->hdr->width_minus1 + 1 +
+  extended_height[0] = iinfo->hdr->height_minus1 + 1 +
                                     iinfo->hdr->left_margin +
                                     iinfo->hdr->right_margin;
+
 }
 
 

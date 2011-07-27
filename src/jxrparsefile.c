@@ -54,20 +54,21 @@ jpegxr_file_read_metadata (j_file_ptr finfo)
    * directories are ignored. */
   TRACEMS(finfo,2,JXRTRC_CREATE_DIR);
   finfo->num_dirs = 1;
-  // list of dirs
-  j_dir_ptr dirs[finfo->num_dirs];
-  struct jpegxr_dir_struct dinfo;
-  dirs[0] = &dinfo;
-  finfo->dirs = dirs;
+  
+  /* TODO - right now we have one directory allocated statically during
+   * jpegxr_file_CreateDecompress. When multiple are supported this will
+   * have to change. */
+   j_dir_ptr dinfo;
+   dinfo = &finfo->dirs[0];
   
   /* Initialize the JPEG-XR directory decompression object */
-  finfo->dirs[0]->err = finfo->err;
-  jpegxr_dir_create_decompress(&dinfo); // has its own mem. manager
-  finfo->dirs[0]->progress = finfo->progress;
-  finfo->dirs[0]->src = finfo->src;
+  dinfo->err = finfo->err;
+  dinfo->mem = finfo->mem;
+  dinfo->progress = finfo->progress;
+  dinfo->src = finfo->src;
 
   /* Read the directory header */
-  jpegxr_dir_read_metadata(&dinfo);
+  jpegxr_dir_read_metadata( dinfo );
   
   /* TODO - what new return codes are needed? */
   switch (retcode) {
