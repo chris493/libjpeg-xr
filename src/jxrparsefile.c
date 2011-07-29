@@ -55,40 +55,53 @@ jpegxr_file_read_metadata (j_file_ptr finfo)
   TRACEMS(finfo,2,JXRTRC_CREATE_DIR);
   finfo->num_dirs = 1;
   
-  /* TODO - right now we have one directory allocated statically during
-   * jpegxr_file_CreateDecompress. When multiple are supported this will
-   * have to change. */
-   j_dir_ptr dinfo;
-   dinfo = &finfo->dirs[0];
+  /* Allocate storage for directory objects */
+  j_dir_ptr dirs = (*finfo->mem->alloc_small) (
+			      (j_common_ptr) finfo,
+			      JPOOL_IMAGE,
+			      finfo->num_dirs * SIZEOF(struct jpegxr_file_struct)
+			  );
+  j_dir_ptr * dirs_ptr = (*finfo->mem->alloc_small) (
+			      (j_common_ptr) finfo,
+			      JPOOL_IMAGE,
+			      finfo->num_dirs * SIZEOF(j_dir_ptr)
+			  );
+  finfo->dirs = dirs_ptr;
   
-  /* Initialize the JPEG-XR directory decompression object */
-  dinfo->err = finfo->err;
-  dinfo->mem = finfo->mem;
-  dinfo->progress = finfo->progress;
-  dinfo->src = finfo->src;
+  /* Initialise and read data for each directory */
+  for (unsigned int i=0; i < finfo->num_dirs; i++) {
+    dirs_ptr[i] = &dirs[i];
+    j_dir_ptr dinfo = finfo->dirs[i];
+     
+    /* Initialize the JPEG-XR directory decompression object */
+    dinfo->err = finfo->err;
+    dinfo->mem = finfo->mem;
+    dinfo->progress = finfo->progress;
+    dinfo->src = finfo->src;
 
-  /* Read the directory header */
-  jpegxr_dir_read_metadata( dinfo );
-  
-  /* TODO - what new return codes are needed? */
-  switch (retcode) {
-  case JPEG_REACHED_SOS:
-    retcode = JPEG_HEADER_OK;
-    break;
-  case JPEG_REACHED_EOI:
-    /* Reset to start state; it would be safer to require the application to
-     * call jpeg_abort, but we can't change it now for compatibility reasons.
-     * A side effect is to free any temporary memory (there shouldn't be any).
-     */
-    //jpeg_abort((j_common_ptr) finfo); /* sets state = DSTATE_START */
-    retcode = JPEG_HEADER_TABLES_ONLY;
-    break;
-  case JPEG_SUSPENDED:
-    /* no work */
-    break;
+    /* Read the directory header */
+    jpegxr_dir_read_metadata( dinfo );
   }
 
-  return retcode;
+    /* TODO - what new return codes are needed? */
+    switch (retcode) {
+    case JPEG_REACHED_SOS:
+      retcode = JPEG_HEADER_OK;
+      break;
+    case JPEG_REACHED_EOI:
+      /* Reset to start state; it would be safer to require the application to
+       * call jpeg_abort, but we can't change it now for compatibility reasons.
+       * A side effect is to free any temporary memory (there shouldn't be any).
+       */
+      //jpeg_abort((j_common_ptr) finfo); /* sets state = DSTATE_START */
+      retcode = JPEG_HEADER_TABLES_ONLY;
+      break;
+    case JPEG_SUSPENDED:
+      /* no work */
+      break;
+    }
+
+    return retcode;
 }
 
 

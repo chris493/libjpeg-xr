@@ -560,13 +560,6 @@ typedef struct {
 
 } jxr_mb_vars;
 
-typedef struct {
-	/* Header, used during metadata reading */
-	jxr_image_plane_header * hdr;
-	/* Global variables, used during decompression */
-	jxr_image_plane_vars * vars;
-} jxr_image_plane;
-  
 /* Master record for a JPEG-XR coded image decompression instance */
 struct jpegxr_image_struct {
   jpegxr_common_fields;		/* Fields shared with jpegxr_compress_struct */
@@ -574,14 +567,12 @@ struct jpegxr_image_struct {
   /* Start of instance in data source */
   unsigned int offset;
   
-  /* Image header */
-  jxr_image_header 	* hdr;
   /* Image variables */
   jxr_image_vars 	* vars;
   
   /* Headers and variables for each (image and alpha) plane */
-  jxr_image_plane * image_plane;
-  jxr_image_plane * alpha_plane; /* NULL if no alpha plane */
+  jxr_image_plane_vars * image_plane_vars;
+  jxr_image_plane_vars * alpha_plane_vars; /* NULL if no alpha plane */
 
   /* Tile variables */
   jxr_tile_vars * tile_vars;
@@ -592,9 +583,7 @@ struct jpegxr_image_struct {
 };
 
 
-
 /* Data types for JPEG-XR directory instances */
-
 
 /* Field tags for IFD entries */
 #define JXR_FIELD_TAG_DEF(XX) \
@@ -662,9 +651,6 @@ struct jpegxr_dir_struct {
   
   /* Number of entries in the directory */
   UINT16 num_entries;
-  /* Pointer to head of list of ifd entries */
-  /* Currently we ignore all except the minimally requred 5. */
-  ifd_entry ** ifd_entry_list;
   
   /* Required entry values */
   /* Currently these are the only entries supported. All directories
@@ -926,8 +912,6 @@ EXTERN(int) jpegxr_file_read_header JPP((j_file_ptr finfo));
 EXTERN(int) jpegxr_dir_read_metadata JPP((j_dir_ptr dinfo));
 /* Read start of a JPEG-XR directory stream. */
 EXTERN(int) jpegxr_dir_read_header JPP((j_dir_ptr dinfo));
-/* Read IFD entry values from a directory stream */
-EXTERN(int) jpegxr_dir_read_ifd_entries JPP((j_dir_ptr dinfo));
 
 /* Read the metadata from a coded image codestream to obtain decompression
  * parameters and details of macroblock and tile layers.*/

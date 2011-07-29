@@ -20,142 +20,6 @@
 #endif
 
 /*
- * Read a JPEG-XR directory to obtain headers and decompression
- * parameters. This reads directory, image, tile and macroblock layer 
- * information. The source data should be at the start of the directory
- * header.
- *
- */
-GLOBAL(int)
-jpegxr_dir_read_metadata (j_dir_ptr dinfo)
-{
-  int retcode;
-  
-  TRACEMS(dinfo,1,JXRTRC_DIR_BEGIN_META);
-  
-  /* Parse the directory header */
-  retcode = jpegxr_dir_read_header(dinfo);
-  
-  /* Process each IFD entry */
-  /* This will involve seeking and reading from the stream at least
-   * once. After this operation, there is no guarantee of the position
-   * of the read head in the source input. */
-  jpegxr_dir_read_ifd_entries(dinfo);
-  
-  /* Skip forward to the coded image */
-  TRACEMS1(dinfo,2,JXRTRC_SEEK_IMAGE,dinfo->image_offset);
-  (*dinfo->src->seek_input_data) (((j_common_ptr)dinfo), (long) dinfo->image_offset); 
-  
-  /* Create a coded image object*/
-  /* TODO - currently we support a single coded image. Some directories
-   * will contain a second coded image containing the alpha plane.
-   * Possibly even more coded images can be contained within a
-   * directory, I don't think so though. TODO - verify this. */
-  TRACEMS(dinfo,2,JXRTRC_CREATE_IMAGE);
-  struct jpegxr_image_struct iinfo;
-  dinfo->image = &iinfo;
-  
-  /* Initialize the JPEG-XR code image object */
-  dinfo->image->err = dinfo->err;
-  dinfo->image->mem = dinfo->mem;
-  dinfo->image->progress = dinfo->progress;
-  dinfo->image->src = dinfo->src;
-  
-  /* Read the coded image header */
-  jpegxr_image_read_metadata(&iinfo);
-  
-  return retcode;
-}
-
-
-/*
- * Read only directory header from the source data.
- * The source data should be at the start of the directory header.
- *  
- */          
-GLOBAL(int)
-jpegxr_dir_read_header (j_dir_ptr dinfo)
-{
-  UINT8 c;
-  UINT16 c2;
-  UINT32 c4;
-  
-  TRACEMS(dinfo, 2, JXRTRC_DIR_BEGIN);
-  
-  INPUT_VARS(dinfo);
-  
-  /* Number of IFD entries the IFD contains */
-  INPUT_2BYTES_LE(((j_common_ptr)dinfo), c2, return FALSE);
-  if (c2 < JXR_MIN_NUM_IFD_ENTRIES)
-    ERREXIT2(dinfo,JXRERR_TOO_FEW_IFD_ENTRIES,c2,JXR_MIN_NUM_IFD_ENTRIES);
-  TRACEMS1(dinfo, 3, JXRTRC_DIR_NUM_IFD_ENTRIES, c2);
-  dinfo->num_entries = c2;
-  
-  /* Allocate storage for list of IFD entries */
-  ifd_entry *ifde_list = (*dinfo->mem->alloc_small) (
-			      (j_common_ptr) dinfo,
-			      JPOOL_IMAGE,
-			      dinfo->num_entries * SIZEOF(ifd_entry)
-			  );
-  ifd_entry **ifde_ptr_list = (*dinfo->mem->alloc_small) (
-			      (j_common_ptr) dinfo,
-			      JPOOL_IMAGE,
-			      dinfo->num_entries * SIZEOF(ifd_entry*)
-			  );
-  dinfo->ifd_entry_list = ifde_ptr_list;
-  
-  /* Define string lookup functions for enums */
-  DEFINE_ENUM(JXR_FIELD_TAG,JXR_FIELD_TAG_DEF);
-  
-  /* Cycle through and fill out IFD entry */
-  for (unsigned int i=0; i < dinfo->num_entries; i++) {
-    
-    /* List element points to IFD ptr */
-    dinfo->ifd_entry_list[i] = &ifde_list[i];
-    
-    /* Field tag determines type of IFD entry */
-    /* We check for supported types later */
-    INPUT_2BYTES_LE(((j_common_ptr)dinfo), c2, return FALSE);
-    TRACEMS2(dinfo, 3, JXRTRC_DIR_FIELD_TAG, i, GetString_JXR_FIELD_TAG(c2) );
-    dinfo->ifd_entry_list[i]->field_tag = c2;
-    
-    /* Element type determines length and format of elements */
-    INPUT_2BYTES_LE(((j_common_ptr)dinfo), c2, return FALSE);
-    // check for reserved type
-    if (c2 < JELEMTYPE_BYTE || c2 > JELEMTYPE_DOUBLE)
-      TRACEMS2(dinfo, 0, JXRTRC_DIR_ELEM_TYPE_RESERVED, i, c2);
-    else
-      TRACEMS2(dinfo, 4, JXRTRC_DIR_ELEM_TYPE, i, c2);
-    dinfo->ifd_entry_list[i]->element_type = c2;
-    
-    /* Number of elements */
-    INPUT_4BYTES_LE(((j_common_ptr)dinfo), c4, return FALSE);
-    TRACEMS2(dinfo, 4, JXRTRC_DIR_NUM_ELEMS, i, c4);
-    dinfo->ifd_entry_list[i]->num_elements = c4;
-    
-    /* Element values, or offset where they can be found */
-    /* Offset used if num_elements * sizeof(element_type) is more that
-     * 4-bytes.  */
-    INPUT_4BYTES_LE(((j_common_ptr)dinfo), c4, return FALSE);
-    TRACEMS2(dinfo, 4, JXRTRC_DIR_VALUES, i, c4);
-    dinfo->ifd_entry_list[i]->values_or_offset = c4;
-  }
-  
-  /* Linked list to next directory */
-  INPUT_4BYTES_LE(((j_common_ptr)dinfo), c4, return FALSE);
-  if (c4 != 0)
-    TRACEMS1(dinfo, 2, JXRTRC_DIR_NEXT_IFD, c4);
-  else
-    TRACEMS(dinfo, 2, JXRTRC_DIR_NO_MORE_IFD);
-  dinfo->zero_or_next_ifd_offset = c4;
-  
-  INPUT_SYNC(dinfo);
-  
-  /* TODO return correct code */
-  return JPEG_REACHED_SOS;
-}
-
-/*
  * Cycle through and read IFD entries. Often this is just reading values
  * into fields of the directory object. Sometimes this involves seeking and
  * reading from the stream if num_elements * sizeof(element_type) is
@@ -168,8 +32,8 @@ jpegxr_dir_read_header (j_dir_ptr dinfo)
  * are valid.
  *  
  */          
-GLOBAL(boolean)
-jpegxr_dir_read_ifd_entries (j_dir_ptr dinfo)
+LOCAL(int)
+jpegxr_dir_read_ifd_entries (j_dir_ptr dinfo, ifd_entry * ifd_entry_list)
 {
   UINT8 c;
   UINT16 c2;
@@ -185,8 +49,9 @@ jpegxr_dir_read_ifd_entries (j_dir_ptr dinfo)
   
   /* For each entry we found */
   for (int i=0; i < dinfo->num_entries; i++) {
-
-    ifde = dinfo->ifd_entry_list[i];
+    
+    /* IFD entry we will be using */
+    ifde = &ifd_entry_list[i];
     
     /* Currently we only support the 5 mandatory fields */
     switch (ifde->field_tag) {
@@ -235,5 +100,141 @@ jpegxr_dir_read_ifd_entries (j_dir_ptr dinfo)
   
   INPUT_SYNC(dinfo);
   
-  return TRUE;
+  /* TODO return correct code */
+  return JPEG_REACHED_SOS;
 }
+
+
+/*
+ * Read only directory header from the source data.
+ * The source data should be at the start of the directory header.
+ *  
+ */          
+GLOBAL(int)
+jpegxr_dir_read_header (j_dir_ptr dinfo)
+{
+  UINT8 c;
+  UINT16 c2;
+  UINT32 c4;
+  
+  TRACEMS(dinfo, 2, JXRTRC_DIR_BEGIN);
+  
+  INPUT_VARS(dinfo);
+  
+  /* Number of IFD entries the IFD contains */
+  INPUT_2BYTES_LE(((j_common_ptr)dinfo), c2, return FALSE);
+  if (c2 < JXR_MIN_NUM_IFD_ENTRIES)
+    ERREXIT2(dinfo,JXRERR_TOO_FEW_IFD_ENTRIES,c2,JXR_MIN_NUM_IFD_ENTRIES);
+  TRACEMS1(dinfo, 3, JXRTRC_DIR_NUM_IFD_ENTRIES, c2);
+  dinfo->num_entries = c2;
+  
+  /* Temporary var for reading IFD entries */
+  ifd_entry * ifd_entry_list;
+  
+  /* Define string lookup functions for enums */
+  DEFINE_ENUM(JXR_FIELD_TAG,JXR_FIELD_TAG_DEF);
+  
+  /* Cycle through and fill out IFD entry */
+  for (unsigned int i=0; i < dinfo->num_entries; i++) {
+    
+    /* Field tag determines type of IFD entry */
+    /* We check for supported types later */
+    INPUT_2BYTES_LE(((j_common_ptr)dinfo), c2, return FALSE);
+    TRACEMS2(dinfo, 3, JXRTRC_DIR_FIELD_TAG, i, GetString_JXR_FIELD_TAG(c2) );
+    ifd_entry_list[i].field_tag = c2;
+    
+    /* Element type determines length and format of elements */
+    INPUT_2BYTES_LE(((j_common_ptr)dinfo), c2, return FALSE);
+    // check for reserved type
+    if (c2 < JELEMTYPE_BYTE || c2 > JELEMTYPE_DOUBLE)
+      TRACEMS2(dinfo, 0, JXRTRC_DIR_ELEM_TYPE_RESERVED, i, c2);
+    else
+      TRACEMS2(dinfo, 4, JXRTRC_DIR_ELEM_TYPE, i, c2);
+    ifd_entry_list[i].element_type = c2;
+    
+    /* Number of elements */
+    INPUT_4BYTES_LE(((j_common_ptr)dinfo), c4, return FALSE);
+    TRACEMS2(dinfo, 4, JXRTRC_DIR_NUM_ELEMS, i, c4);
+    ifd_entry_list[i].num_elements = c4;
+    
+    /* Element values, or offset where they can be found */
+    /* Offset used if num_elements * sizeof(element_type) is more that
+     * 4-bytes.  */
+    INPUT_4BYTES_LE(((j_common_ptr)dinfo), c4, return FALSE);
+    TRACEMS2(dinfo, 4, JXRTRC_DIR_VALUES, i, c4);
+    ifd_entry_list[i].values_or_offset = c4;
+  }
+  
+  /* Linked list to next directory */
+  INPUT_4BYTES_LE(((j_common_ptr)dinfo), c4, return FALSE);
+  if (c4 != 0)
+    TRACEMS1(dinfo, 2, JXRTRC_DIR_NEXT_IFD, c4);
+  else
+    TRACEMS(dinfo, 2, JXRTRC_DIR_NO_MORE_IFD);
+  dinfo->zero_or_next_ifd_offset = c4;
+  
+  INPUT_SYNC(dinfo);
+  
+  /* Process each IFD entry */
+  /* This will involve seeking and reading from the stream at least
+   * once. After this operation, there is no guarantee of the position
+   * of the read head in the source input. */
+  jpegxr_dir_read_ifd_entries(dinfo, ifd_entry_list);
+  
+  /* TODO return correct code */
+  return JPEG_REACHED_SOS;
+}
+
+
+/*
+ * Read a JPEG-XR directory to obtain headers and decompression
+ * parameters. This reads directory, image, tile and macroblock layer 
+ * information. The source data should be at the start of the directory
+ * header.
+ *
+ */
+GLOBAL(int)
+jpegxr_dir_read_metadata (j_dir_ptr dinfo)
+{
+  int retcode;
+  
+  TRACEMS(dinfo,1,JXRTRC_DIR_BEGIN_META);
+  
+  /* Parse the directory header */
+  /* This will involve seeking and reading from the stream at least
+   * once. After this operation, there is no guarantee of the position
+   * of the read head in the source input. */
+  retcode = jpegxr_dir_read_header(dinfo);
+  
+  /* Skip forward to the coded image */
+  TRACEMS1(dinfo,2,JXRTRC_SEEK_IMAGE,dinfo->image_offset);
+  (*dinfo->src->seek_input_data) (((j_common_ptr)dinfo), (long) dinfo->image_offset); 
+  
+  /* Create a coded image object*/
+  /* TODO - currently we support a single coded image. Some directories
+   * will contain a second coded image containing the alpha plane.
+   * Possibly even more coded images can be contained within a
+   * directory, I don't think so though. TODO - verify this. */
+  TRACEMS(dinfo,2,JXRTRC_CREATE_IMAGE);
+  
+  /* Allocate memory for image object */
+  j_image_ptr iinfo = (*dinfo->mem->alloc_small) (
+			  (j_common_ptr) dinfo,
+			  JPOOL_IMAGE,
+			  SIZEOF(struct jpegxr_image_struct)
+			);
+  dinfo->image = iinfo;
+  
+  /* Initialize the JPEG-XR code image object */
+  dinfo->image->err = dinfo->err;
+  dinfo->image->mem = dinfo->mem;
+  dinfo->image->progress = dinfo->progress;
+  dinfo->image->src = dinfo->src;
+  
+  /* Read the coded image header */
+  jpegxr_image_read_metadata(iinfo);
+  
+  return retcode;
+}
+
+
