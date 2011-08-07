@@ -50,7 +50,7 @@ jpegxr_dir_read_ifd_entries (j_dir_ptr dinfo, ifd_entry * ifd_entry_list)
   /* For each entry we found */
   for (int i=0; i < dinfo->num_entries; i++) {
     
-    /* IFD entry we will be using */
+    /* Current IFD entry */
     ifde = &ifd_entry_list[i];
     
     /* Currently we only support the 5 mandatory fields */
@@ -128,9 +128,13 @@ jpegxr_dir_read_header (j_dir_ptr dinfo)
   TRACEMS1(dinfo, 3, JXRTRC_DIR_NUM_IFD_ENTRIES, c2);
   dinfo->num_entries = c2;
   
-  /* Temporary var for reading IFD entries */
-  ifd_entry * ifd_entry_list;
-  
+  /* Allocate temporary obect for reading IFD entries */
+  ifd_entry * ifd_entry_list = (*dinfo->mem->alloc_small) (
+			  (j_common_ptr) dinfo,
+			  JPOOL_IMAGE,
+			  dinfo->num_entries * SIZEOF(ifd_entry)
+			);
+			
   /* Define string lookup functions for enums */
   DEFINE_ENUM(JXR_FIELD_TAG,JXR_FIELD_TAG_DEF);
   
@@ -214,7 +218,7 @@ jpegxr_dir_read_metadata (j_dir_ptr dinfo)
   /* TODO - currently we support a single coded image. Some directories
    * will contain a second coded image containing the alpha plane.
    * Possibly even more coded images can be contained within a
-   * directory, I don't think so though. TODO - verify this. */
+   * directory, I don't think so though (verify this). */
   TRACEMS(dinfo,2,JXRTRC_CREATE_IMAGE);
   
   /* Allocate memory for image object */

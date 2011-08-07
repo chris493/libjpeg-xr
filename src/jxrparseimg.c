@@ -90,11 +90,11 @@ read_profile_level_info(j_image_ptr iinfo, UINT16 * i_bytes) {
   UINT8 profile_idc ;
   UINT8 level_idc   ;
   UINT16 reserved_l ; 
-  UINT8 last_flag =1;
+  UINT8 last_flag   ;
   
   /* TODO - read the profile and determine if we support the image. */
   INPUT_VARS(iinfo);
-  while (last_flag && (num_bytes<1024)) {
+  for (int i_last=0; i_last == 0; i_last = last_flag) {
     printf("Reading profile info at byte offset 0x%x\n", idx);
     INPUT_BYTE((j_common_ptr)iinfo,c,return FALSE);
     profile_idc = c;
@@ -174,7 +174,9 @@ read_additional (j_image_ptr iinfo)
   // Read subsequent bytes value
   vlw_esc(iinfo, &iinfo->vars->subsequent_bytes, 1);
   printf("Found %u subsequent bytes\n", iinfo->vars->subsequent_bytes);
+  
   if (iinfo->vars->subsequent_bytes > 0) {
+    
     read_profile_level_info(iinfo,&i_bytes);
     printf("Found %u iBytes\n", i_bytes);
     
@@ -185,7 +187,8 @@ read_additional (j_image_ptr iinfo)
     printf("Skipping %u bytes (subsequent - iBytes) to coded tiles\n", value_additional_bytes);
 
     // Skip forward by number of additional bytes
-    (*iinfo->src->skip_input_data) ((j_common_ptr) iinfo, (long) value_additional_bytes); 
+    (*iinfo->src->skip_input_data) ((j_common_ptr) iinfo, (long) value_additional_bytes);
+     
   }
     
   /* TODO return correct code */

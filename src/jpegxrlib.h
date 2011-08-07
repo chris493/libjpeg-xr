@@ -491,7 +491,7 @@ typedef struct {
 	 * color components. */
 	UINT16 ** mb_qp_index_hp;
 
-	/* Given entry mb_dc_lp[MBx][MBy][i][j]: when j is equal to 0, this variable
+	/* mb_dc_lp[MBx][MBy][i][j]: when j is equal to 0, this variable
 	 * holds the DC transform coefficient for the macroblock indexed by MBx
 	 * and MBy, associated with the color component indexed by i. For non-zero
 	 * values of the index j, this variable holds the j-th LP transform
@@ -503,7 +503,7 @@ typedef struct {
 	 * component case, j ranges from 0 to 7. */
 	UINT16 **** mb_dc_lp;
 
-	/* Given entry mb_buffer[MBx][MBy][i][j]: this variable holds the j-th
+	/* mb_buffer[MBx][MBy][i][j] holds the j-th
 	 * transform coefficient - associated with the color component i − for
 	 * the macroblock indexed by MBx and MBy. The index j ranges from 0 to 255.
 	 * The ordering of the 256 transform coefficients in the macroblock is as
@@ -515,7 +515,7 @@ typedef struct {
 	 * from (16*iBlkIndex + 0) to (16*iBlkIndex + 15), inclusive. */
 	UINT16 **** mb_buffer;
 
-	/* Given entry mb_cbp_hp[MBx][MBy][i]: this variable holds the coded block
+	/* mb_cbp_hp[MBx][MBy][i] holds the coded block
 	 * status for the macroblock indexed by MBx and MBy, associated with the
 	 * color component indexed by i. The association of a bit of this variable
 	 * to the block in the macroblock is specified in subclause 8.7.17.1, and
@@ -523,13 +523,13 @@ typedef struct {
 	 * transform coefficients to be scanned. */
 	UINT16 *** mb_cbp_hp;
 
-	/* Given entry pred_dc_lp[MBx][MBy][i][j]: this variable holds the predicted
+	/* pred_dc_lp[MBx][MBy][i][j] holds the predicted
 	 * DC and LP coefficient values, for the macroblock indexed by MBx and MBy,
 	 * associated with the color component indexed by i; the index j ranges
 	 * from 0 to 6. The predicted DC value corresponds to index 0. */
 	UINT16 **** pred_dc_lp;
 
-	/* Given entry model_bits_mb_hp[MBx][MBy][i]: this variable holds the
+	/* model_bits_mb_hp[MBx][MBy][i] holds the
 	 * value of the member variable MBits[i], associated with the data structure
 	 * ModelHP as defined in subclause 5.5.6, for the macroblock indexed by
 	 * MBx and MBy. The index i ranges from 0 to 1. For each macroblock, two
@@ -539,7 +539,7 @@ typedef struct {
 	 * parsing of the syntax structures MB_HP( ) and MB_FLEXBITS( ). */
 	UINT16 *** model_bits_mb_hp;
 
-	/* Given entry image_plane[i][x][y]: this variable holds the sample value
+	/* image_plane[i][x][y] holds the sample value
 	 * associated with the color component i, located at the position
 	indicated by the values x and y, where:
 	* 		0 <= i < num_components,
