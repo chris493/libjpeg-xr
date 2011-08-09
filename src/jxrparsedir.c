@@ -214,7 +214,7 @@ jpegxr_dir_read_metadata (j_dir_ptr dinfo)
   TRACEMS1(dinfo,2,JXRTRC_SEEK_IMAGE,dinfo->image_offset);
   (*dinfo->src->seek_input_data) (((j_common_ptr)dinfo), (long) dinfo->image_offset); 
   
-  /* Create a coded image object*/
+  /* Create a coded image object */
   /* TODO - currently we support a single coded image. Some directories
    * will contain a second coded image containing the alpha plane.
    * Possibly even more coded images can be contained within a

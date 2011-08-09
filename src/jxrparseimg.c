@@ -245,9 +245,8 @@ read_index_table (j_image_ptr iinfo, jxr_image_header * hdr)
 
 
 LOCAL(void)
-calculate_component_array_sizes (j_image_ptr iinfo, jxr_image_header * hdr)
+calculate_component_array_sizes (j_image_ptr iinfo, jxr_image_header * hdr, jxr_image_plane_header * plane_hdr)
 {
-  
   /* Allocate extended dimensions arrays */
   UINT32 * extended_width = (*iinfo->mem->alloc_small) (
         (j_common_ptr) iinfo,
@@ -261,6 +260,7 @@ calculate_component_array_sizes (j_image_ptr iinfo, jxr_image_header * hdr)
   );
   iinfo->vars->extended_width = extended_width;
   iinfo->vars->extended_height = extended_height;
+  
   /* Calculate extended dimensions for luma component */
   extended_width[0]  = hdr->width_minus1 + 1 +
                                     hdr->top_margin +
@@ -268,7 +268,36 @@ calculate_component_array_sizes (j_image_ptr iinfo, jxr_image_header * hdr)
   extended_height[0] = hdr->height_minus1 + 1 +
                                     hdr->left_margin +
                                     hdr->right_margin;
-
+  printf("Luma dimensions set to %u,%u\n",
+            extended_width[1],
+            extended_height[1]);
+                                    
+  /* Calculate extended dimensions for chroma components */
+  if (plane_hdr->internal_clr_fmt == JINTCOL_YUV420) {
+    extended_height[1] = extended_height[0] / 2;
+    extended_width[1] = extended_width[0] / 2;
+  } else if (plane_hdr->internal_clr_fmt == JINTCOL_YUV422) {
+    extended_height[1] = extended_height[0];
+    extended_width[1] = extended_width[0] / 2;
+  } else {
+    extended_height[1] = extended_height[0];
+    extended_width[1] = extended_width[0];
+  }
+  printf("Chroma dimensions set to %u,%u\n",
+            extended_width[1],
+            extended_height[1]);
+  
+  /* Specification says all other dimensions are the same,
+   * slightly pointless but for clarity we duplicate them */
+  for (unsigned int i=1; i < iinfo->image_plane_vars->num_components; i++) {
+      extended_height[i] = extended_height[1];
+      extended_width[i] = extended_width[1];
+  }
+  
+  /* Also store sizes in macroblocks, one MB = 16x16 samples */
+  iinfo->vars->mb_height = extended_height[0] / 16;
+  iinfo->vars->mb_width = extended_width[0] / 16;
+  
 }
 
 /*
@@ -492,6 +521,10 @@ read_plane_header (j_image_ptr iinfo, jxr_image_header * hdr, boolean alpha)
   /* We can now determine the number of components */
   plane_vars->num_components = determine_num_components(iinfo, &plane_hdr);
   
+  /* For the primary image plane, we can now calculate the extended
+   * dimensions */
+  if (!alpha) calculate_component_array_sizes (iinfo, hdr, &plane_hdr);
+  
   /* Output bit depth specific parameters */
   // TODO check and output
   INPUT_BYTE(((j_common_ptr)iinfo), c,return FALSE);
@@ -557,9 +590,66 @@ read_plane_header (j_image_ptr iinfo, jxr_image_header * hdr, boolean alpha)
   
   INPUT_SYNC(iinfo);
   
+  
   /* TODO return correct code */
   return JPEG_REACHED_SOS;
 }
+
+/*
+ * Determine the tile boundaries and number of MB in each tile.
+ *  
+ */          
+LOCAL(int)
+determine_tile_boundaries (j_image_ptr iinfo, jxr_image_header * hdr)
+{
+  
+  // First allocate storage
+   iinfo->vars->left_mb_index_of_tile = (*iinfo->mem->alloc_small) (
+            (j_common_ptr) iinfo,
+            JPOOL_IMAGE,
+            (hdr->num_ver_tiles_minus1+1) * SIZEOF(UINT16)
+        );
+   iinfo->vars->top_mb_index_of_tile = (*iinfo->mem->alloc_small) (
+            (j_common_ptr) iinfo,
+            JPOOL_IMAGE,
+            (hdr->num_hor_tiles_minus1+1) * SIZEOF(UINT16)
+        );
+  // TODO - are we OK allocating this much storage this way?
+   iinfo->vars->num_mb_in_tile = (*iinfo->mem->alloc_small) (
+            (j_common_ptr) iinfo,
+            JPOOL_IMAGE,
+            (hdr->num_ver_tiles_minus1+1) *
+            (hdr->num_hor_tiles_minus1+1) *
+            SIZEOF(UINT16)
+        );
+  
+  // Left MB index boundaries
+  iinfo->vars->left_mb_index_of_tile[0] = 0;
+  for (unsigned int n = 0; n < hdr->num_ver_tiles_minus1; n++) {
+    iinfo->vars->left_mb_index_of_tile[n+1] = iinfo->vars->left_mb_index_of_tile[n] + hdr->tile_width_in_mb[n];
+  }
+  iinfo->vars->left_mb_index_of_tile[hdr->num_ver_tiles_minus1 + 1] = iinfo->vars->mb_width;
+  // Top MB index boundaries
+  iinfo->vars->top_mb_index_of_tile[0] = 0;
+  for (unsigned int n = 0; n < hdr->num_hor_tiles_minus1; n++) {
+    iinfo->vars->top_mb_index_of_tile[n+1] = iinfo->vars->top_mb_index_of_tile[n] + hdr->tile_height_in_mb[n];
+  }
+  iinfo->vars->top_mb_index_of_tile[hdr->num_hor_tiles_minus1 + 1] = iinfo->vars->mb_height;
+  // Total number of MB in each tile
+  unsigned int n=0;
+  for (unsigned int i = 0; i < hdr->num_hor_tiles_minus1 + 1; i++) {
+    for (unsigned int j = 0; j < hdr->num_ver_tiles_minus1 + 1; j++) {
+      iinfo->vars->num_mb_in_tile[n] =
+        hdr->tile_height_in_mb[i] * hdr->tile_width_in_mb[j];
+      n++;
+    }
+  }
+  
+  /* TODO return correct code */
+  return JPEG_REACHED_SOS;
+  
+}
+
 
 
 /*
@@ -679,8 +769,14 @@ read_header (j_image_ptr iinfo, jxr_image_header * hdr)
     hdr->num_hor_tiles_minus1 = 0;
     hdr->num_ver_tiles_minus1 = 0;
   }
-  TRACEMS2(iinfo,3,JXRTRC_TILE_DIMENSIONS, hdr->num_hor_tiles_minus1+1, hdr->num_ver_tiles_minus1+1);
+  /* We can now calcualte the number of tile columns/rows */
+  iinfo->vars->num_tile_cols = hdr->num_hor_tiles_minus1 + 1;
+  iinfo->vars->num_tile_rows = hdr->num_ver_tiles_minus1 + 1;
+  TRACEMS2(iinfo,3,JXRTRC_TILE_DIMENSIONS,
+    iinfo->vars->num_tile_cols,
+    iinfo->vars->num_tile_rows);
   
+
   /* Read in tile sequences, if present */
   // TODO - might not need to allocate here if we can drop this after writing
   // to vars
@@ -714,6 +810,10 @@ read_header (j_image_ptr iinfo, jxr_image_header * hdr)
     hdr->tile_height_in_mb = tile_height_in_mb;
     hdr->tile_width_in_mb = tile_width_in_mb;
   }
+  
+  /* We can now calculate tile MB boundaries and MB size */
+  determine_tile_boundaries(iinfo,hdr);
+
   
   /* Read window margins, if present */
   if (hdr->windowing_flag) {
@@ -765,9 +865,6 @@ jpegxr_image_read_metadata (j_image_ptr iinfo)
   
   /* Read the image plane header */
   read_plane_header (iinfo, &hdr, FALSE);
-
-  /* Calculate component array sizes */
-  calculate_component_array_sizes (iinfo, &hdr);
   
   /* Read the alpha plane header, if one is present */
   if (hdr.alpha_image_plane_flag)
