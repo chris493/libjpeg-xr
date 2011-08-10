@@ -163,8 +163,9 @@ rewind_input_data (j_common_ptr cinfo, long num_bytes)
 
   if (num_bytes > 0) {
     if (num_bytes > (INPUT_BUF_SIZE - src->pub.bytes_in_buffer)) {
-      // TODO - proper error code for this.
-      fprintf(stderr, "You tried to rewind too far.");
+      /* Tried to seek outside buffer - unrecoverable error (for now) */
+      /* TODO - possibly this can be fixed? */
+      ERREXIT(cinfo, JXRERR_BAD_SEEK);
     } else {
       src->pub.next_input_byte -= (size_t) num_bytes;
       src->pub.bytes_in_buffer += (size_t) num_bytes;

@@ -9,7 +9,7 @@ AUTOMAKE_OPTIONS = 1.9 dist-zip dist-bzip2 foreign
 
 # Sources to build library
 LIBSOURCES = 	jxrapi.c jxrparsefile.c jxrparsedir.c jxrparseimg.c \
-			jdatasrc.c jdmaster.c jerror.c jutils.c jmemmgr.c \
+			jdatasrc.c jdmaster.c jerror.c jmemmgr.c jxrdcodetile.c jxrdcodemb.c \
 			@MEMORYMGR@.c
 
 # System dependent sources
@@ -57,7 +57,7 @@ EXTRA_libjpeg_xr_la_SOURCES = $(SYSDEPSOURCES)
 bin_PROGRAMS = djpeg-xr
 
 # Executable sources & libs
-djpeg_xr_SOURCES = djpeg-xr.c cdjpeg-xr.c 
+djpeg_xr_SOURCES = djpeg-xr.c cdjpeg-xr.c
 djpeg_xr_LDADD   = libjpeg-xr.la $(PNGLIBS)
 
 # Manual pages to install

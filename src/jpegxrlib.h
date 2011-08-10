@@ -38,30 +38,6 @@
 #define JPEGXR_LIB_VERSION  11	/* Version 1a */
 
 
-/* TODO - remove these */
-/* Various constants determining the sizes of things.
- * All of these are specified by the JPEG standard, so don't change them
- * if you want to be compatible.
- */
-#define DCTSIZE		    8	/* The basic DCT block is 8x8 samples */
-#define DCTSIZE2	    64	/* DCTSIZE squared; # of elements in a block */
-#define NUM_QUANT_TBLS      4	/* Quantization tables are numbered 0..3 */
-#define NUM_HUFF_TBLS       4	/* Huffman tables are numbered 0..3 */
-#define NUM_ARITH_TBLS      16	/* Arith-coding tables are numbered 0..15 */
-#define MAX_COMPS_IN_SCAN   4	/* JPEG limit on # of components in one scan */
-#define MAX_SAMP_FACTOR     4	/* JPEG limit on sampling factors */
-/* Unfortunately, some bozo at Adobe saw no reason to be bound by the standard;
- * the PostScript DCT filter can emit files with many more than 10 blocks/MCU.
- * If you happen to run across such a file, you can up D_MAX_BLOCKS_IN_MCU
- * to handle it.  We even let you do this from the jconfig.h file.  However,
- * we strongly discourage changing C_MAX_BLOCKS_IN_MCU; just because Adobe
- * sometimes emits noncompliant files doesn't mean you should too.
- */
-#define C_MAX_BLOCKS_IN_MCU   10 /* compressor's limit on blocks per MCU */
-#ifndef D_MAX_BLOCKS_IN_MCU
-#define D_MAX_BLOCKS_IN_MCU   10 /* decompressor's limit on blocks per MCU */
-#endif
-
 /* Constants for JPEG-XR */
 /* Fixed length prefix for a .jxr file */
 #define JXR_FIXED_FILE_HEADER_2BYTE  0x4949
@@ -71,6 +47,13 @@
 #define JXR_GDI_SIG_HI 0x574D5048
 #define JXR_GDI_SIG_LO 0x4F544F00
 #define JXR_INDEX_TABLE_STARTCODE 0x0001
+/* Profile IDC constants */
+#define JXR_PROFILE_IDC_SUBBASELINE 44
+#define JXR_PROFILE_IDC_BASELINE 55
+#define JXR_PROFILE_IDC_MAIN 66
+#define JXR_PROFILE_IDC_ADVANCED 111
+// supported profile
+#define JXR_PROFILE_IDC_MAX_SUPPORTED JXR_PROFILE_IDC_SUBBASELINE
 
 /* Data structures for images (arrays of samples and of DCT coefficients).
  * On 80x86 machines, the image arrays are too big for near pointers,
@@ -455,7 +438,7 @@ typedef struct {
 	 * is equal to FALSE. Also used to specify which set of image
 	 * plane variables, tile variables, and macroblock variables are being
 	 * referenced. */
-	UINT16 is_curr_plane_alpha_flag;
+	boolean is_curr_plane_alpha_flag;
 
 	/* Holds the value associated with the number of color
 	 * components present in the codestream for the current image plane. For
@@ -552,7 +535,33 @@ typedef struct {
 
 /* Tile variables */
 typedef struct {
-	
+  
+    /* This variable holds the column index of the current tile. The
+     * value of tile_index_x is in the range 0 <= TileIndexx < NumTileCols. */
+    UINT16 tile_index_x;
+
+    /* This variable holds the row index of the current tile. The value
+     * of tile_index_y is in the range 0 <= TileIndexy < NumTileRows. */
+    UINT16 tile_index_y;
+
+    /* This variable holds the value associated with the number of macroblock
+     *  in the current tile. */
+    UINT16 num_mb_in_current_tile;
+
+    /* dc_quant_param[i] holds the DC quantization parameter for the color
+     * component i of the current tile. */
+    UINT16 * dc_quant_param;
+
+    /* lp_quant_param[i][j] holds the LP quantization parameter for the
+     * color component i, and the quantization parameter index j of the
+     * current tile. */
+    UINT16 ** lp_quant_param;
+
+    /* hp_quant_param[i][j] holds the HP quantization parameter for the color
+     * component i and the quantization parameter index j of the current
+     * tile. */
+    UINT16 ** hp_quant_param;
+
 } jxr_tile_vars;
 
 /* Macroblock variables */
@@ -567,12 +576,15 @@ struct jpegxr_image_struct {
   /* Start of instance in data source */
   unsigned int offset;
   
-  /* Image variables */
+  /* Image header and variables */
+  jxr_image_header 	* hdr;
   jxr_image_vars 	* vars;
   
   /* Headers and variables for each (image and alpha) plane */
   jxr_image_plane_vars * image_plane_vars;
+  jxr_image_plane_header * image_plane_hdr;
   jxr_image_plane_vars * alpha_plane_vars; /* NULL if no alpha plane */
+  jxr_image_plane_header * alpha_plane_hdr; /* NULL if no alpha plane */
 
   /* Tile variables */
   jxr_tile_vars * tile_vars;
@@ -913,10 +925,27 @@ EXTERN(int) jpegxr_dir_read_metadata JPP((j_dir_ptr dinfo));
 /* Read start of a JPEG-XR directory stream. */
 EXTERN(int) jpegxr_dir_read_header JPP((j_dir_ptr dinfo));
 
-/* Read the metadata from a coded image codestream to obtain decompression
- * parameters and details of macroblock and tile layers.*/
-EXTERN(int) jpegxr_image_read_metadata JPP((j_image_ptr iinfo));
+/* Read the start of a coded image codestream to obtain decompression
+ * parameters */
+EXTERN(int) jpegxr_image_read_header JPP((j_image_ptr iinfo));
 
+/* Begin decompression of all directories within a file */
+EXTERN(void) jpegxr_file_start_decompress JPP((j_file_ptr iinfo));
+/* Begin decompression of all images within a directory */
+EXTERN(void) jpegxr_dir_start_decompress JPP((j_dir_ptr iinfo));
+/* Begin decompression of an image */
+EXTERN(void) jpegxr_image_start_decompress JPP((j_image_ptr iinfo));
+
+/* Tile layer parsing and decoding */
+EXTERN(void) jpegxr_decode_tile_spatial JPP((j_image_ptr iinfo, unsigned int index));
+EXTERN(void) jpegxr_decode_tile_frequency JPP((j_image_ptr iinfo, unsigned int index));
+
+/* End decompression of all directories within a file */
+EXTERN(void) jpegxr_file_finish_decompress JPP((j_file_ptr iinfo));
+/* End decompression of all images within a directory */
+EXTERN(void) jpegxr_dir_finish_decompress JPP((j_dir_ptr iinfo));
+/* End decompression of an image */
+EXTERN(void) jpegxr_image_finish_decompress JPP((j_image_ptr iinfo));
 
 /* Destroy JPEG-XR file object. */
 EXTERN(void) jpegxr_file_destroy JPP((j_file_ptr cinfo));

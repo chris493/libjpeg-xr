@@ -239,6 +239,7 @@ main (int argc, char **argv)
   struct cdjpeg_progress_mgr progress;
 #endif
   int file_index;
+  djpeg_dest_ptr dest_mgr = NULL;
   FILE * input_file;
   FILE * output_file;
   JDIMENSION num_scanlines;
@@ -331,8 +332,22 @@ main (int argc, char **argv)
   
   /* Read file header */
   (void) jpegxr_file_read_metadata(&finfo);
+  
+  /* TODO - initialise the output module here */
+  
+  /* Start decompressor */
+  (void) jpegxr_file_start_decompress(&finfo);
 
-  /* Abort decompression and release memory. */
+  /* Write output file header */
+  //(*dest_mgr->start_output) (&finfo, dest_mgr);
+  /* TODO - process data, equivalent to jpeg_read_scanlines() */
+  //(*dest_mgr->finish_output) (&finfo, dest_mgr);
+  
+  /* Finish decompression and release memory.
+   * Must be done in this order because output module has allocated memory
+   * of lifespan JPOOL_IMAGE; it needs to finish before releasing memory.
+   */
+  (void) jpegxr_file_finish_decompress(&finfo);
   jpegxr_file_destroy(&finfo);
 
   /* Close files, if we opened them */

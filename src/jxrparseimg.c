@@ -6,8 +6,8 @@
  * This file is part of the Independent JPEG Group's software.
  * For conditions of distribution and use, see the accompanying README file.
  * 
- * This file contains algorithms used to parse the file layer of .jxr
- * input file.
+ * This file contains algorithms used to parse the image and image plane
+ * layers of a JPEG-XR coded image.
  */
 
 #define JPEG_INTERNALS
@@ -68,7 +68,7 @@ determine_num_components(j_image_ptr iinfo, jxr_image_plane_header * hdr) {
     TRACEMSS(iinfo,0,JXRTRC_RESERVED_VALUE,"INTERNAL_COLOUR_FORMAT");
   }
   
-  printf("Image contains %u components\n", num_components);
+  TRACEMS1(iinfo, 3, JXRTRC_NUM_COMP, num_components);
   
   return num_components;
 }
@@ -92,24 +92,32 @@ read_profile_level_info(j_image_ptr iinfo, UINT16 * i_bytes) {
   UINT16 reserved_l ; 
   UINT8 last_flag   ;
   
-  /* TODO - read the profile and determine if we support the image. */
+  /* Read the profile information */
   INPUT_VARS(iinfo);
   for (int i_last=0; i_last == 0; i_last = last_flag) {
-    printf("Reading profile info at byte offset 0x%x\n", idx);
+    
+    TRACEMS1( iinfo, 2, JXRTRC_PROFILE_INFO, idx );
+    
     INPUT_BYTE((j_common_ptr)iinfo,c,return FALSE);
     profile_idc = c;
     INPUT_BYTE((j_common_ptr)iinfo,c,return FALSE);
     level_idc   = c;
     INPUT_2BYTES((j_common_ptr)iinfo,c2,return FALSE);
-    // TODO - fix endianness issues
+    // TODO - fix possible endianness issues
     reserved_l   = (c2 >> 1);
     last_flag    = (c2 & 0x0001);
     num_bytes += 4;
   }
   INPUT_SYNC(iinfo);
   
-  // Output result
-  printf("");
+  /* Check that we support this image. */
+  if (profile_idc > JXR_PROFILE_IDC_MAX_SUPPORTED) {
+    WARNMS2(iinfo,JXRWRN_PROFILE_UNSUPPORTED, profile_idc, JXR_PROFILE_IDC_MAX_SUPPORTED);
+  } else {
+    TRACEMS1(iinfo,3,JXRTRC_PROFILE_SUPPORTED, profile_idc);
+  }
+  
+  TRACEMS1(iinfo,3,JXRTRC_IBYTES, num_bytes);
   *i_bytes = num_bytes;
   
   /* TODO return correct code */
@@ -146,7 +154,7 @@ vlw_esc (j_image_ptr iinfo, UINT16 * i_value, unsigned int count)
     } else {/* first_byte is 0xFD, or 0xFE, or 0xFF */
       i_value[i] = 0; /* Escape Mode */
     }
-    printf("VLW ESC found i_value 0x%x\n",i_value[i]);
+    TRACEMS1(iinfo,4,JXRTRC_VLW_ESC, i_value[i]);
     
   }
   
@@ -169,22 +177,22 @@ read_additional (j_image_ptr iinfo)
   
   INPUT_VARS(iinfo);
   
-  printf("Reading additional bytes at offset 0x%x\n", idx);
+  TRACEMS1(iinfo,2,JXRTRC_BEGIN_ABYTES ,idx);
 
   // Read subsequent bytes value
   vlw_esc(iinfo, &iinfo->vars->subsequent_bytes, 1);
-  printf("Found %u subsequent bytes\n", iinfo->vars->subsequent_bytes);
+  TRACEMS1(iinfo,3,JXRTRC_SUBBYTES, iinfo->vars->subsequent_bytes );
   
   if (iinfo->vars->subsequent_bytes > 0) {
     
+    /* Read profile information and check supported */
     read_profile_level_info(iinfo,&i_bytes);
-    printf("Found %u iBytes\n", i_bytes);
     
     // Calculate how many bytes before the coded tiles 
     UINT16 value_additional_bytes = 
       iinfo->vars->subsequent_bytes - i_bytes;
-      
-    printf("Skipping %u bytes (subsequent - iBytes) to coded tiles\n", value_additional_bytes);
+    
+    TRACEMS1(iinfo,2,JXRTRC_SKIP_TO_TILES, value_additional_bytes);
 
     // Skip forward by number of additional bytes
     (*iinfo->src->skip_input_data) ((j_common_ptr) iinfo, (long) value_additional_bytes);
@@ -201,12 +209,14 @@ read_additional (j_image_ptr iinfo)
  *  
  */          
 LOCAL(int)
-read_index_table (j_image_ptr iinfo, jxr_image_header * hdr)
+read_index_table (j_image_ptr iinfo)
 {
   UINT16 c2;
   UINT16 num_index_table_entries;
   INPUT_VARS(iinfo);
     
+  jxr_image_header * hdr = iinfo->hdr;  
+  
   TRACEMS1(iinfo,2,JXRTRC_INDEX_TABLE_BEGIN,idx);
   
   /* Calculate number of indextable entries */  
@@ -220,7 +230,7 @@ read_index_table (j_image_ptr iinfo, jxr_image_header * hdr)
       (hdr->num_ver_tiles_minus1 + 1) *
       (iinfo->vars->num_bands_of_primary);
   }
-  printf("Foud %u index table entries\n", num_index_table_entries);
+  TRACEMS1( iinfo, 3, JXRTRC_IDX_TABLE_ENTRIES, num_index_table_entries);
   
   /* 16-bit start code. Values other that JXR_INDEX_TABLE_STARTCODE are
    * reserved */
@@ -268,9 +278,10 @@ calculate_component_array_sizes (j_image_ptr iinfo, jxr_image_header * hdr, jxr_
   extended_height[0] = hdr->height_minus1 + 1 +
                                     hdr->left_margin +
                                     hdr->right_margin;
-  printf("Luma dimensions set to %u,%u\n",
-            extended_width[1],
-            extended_height[1]);
+  TRACEMS2(iinfo, 3, JXRTRC_LUMA_DIMENSIONS,
+                      extended_width[0],
+                      extended_height[0]);
+            
                                     
   /* Calculate extended dimensions for chroma components */
   if (plane_hdr->internal_clr_fmt == JINTCOL_YUV420) {
@@ -283,9 +294,9 @@ calculate_component_array_sizes (j_image_ptr iinfo, jxr_image_header * hdr, jxr_
     extended_height[1] = extended_height[0];
     extended_width[1] = extended_width[0];
   }
-  printf("Chroma dimensions set to %u,%u\n",
-            extended_width[1],
-            extended_height[1]);
+  TRACEMS2(iinfo, 3, JXRTRC_CHROMA_DIMENSIONS,
+                      extended_width[1],
+                      extended_height[1]);
   
   /* Specification says all other dimensions are the same,
    * slightly pointless but for clarity we duplicate them */
@@ -324,16 +335,13 @@ parse_qp (j_image_ptr iinfo, unsigned int num_components, jxr_qp_set * qp)
   if (qp->component_mode == JCOMPMODE_UNIFORM) {
     INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
     qp->quant = b;
-    printf("UNIFORM component mode: quantisation parameter is %u\n",
-      qp->quant);
+    TRACEMS1(iinfo, 4, JXRTRC_UNIFORM_QP, qp->quant);
   } else if (qp->component_mode == JCOMPMODE_SEPARATE) {
     INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
     qp->quant_luma = b;
     INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
     qp->quant_chroma = b;
-      printf("SEPERATE component mode: luma parameter %u, chroma parameter %u\n",
-      qp->quant_luma,
-      qp->quant_chroma);
+    TRACEMS2(iinfo, 4, JXRTRC_SEPERATE_QP, qp->quant_luma, qp->quant_chroma);
   } else if (qp->component_mode == JCOMPMODE_INDEPENDENT) {
     // allocate memory
     UINT8 * quant_ch = (*iinfo->mem->alloc_small) (
@@ -345,9 +353,7 @@ parse_qp (j_image_ptr iinfo, unsigned int num_components, jxr_qp_set * qp)
     for (int i = 0; i<num_components; i++) {
       INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
       qp->quant_ch[i] = b;
-      printf("INDEPENDENT component mode: quantisation parameter %u of %u is %u\n",
-      i+1, num_components,
-      qp->quant_ch[i]);
+      TRACEMS3(iinfo, 3, JXRTRC_INDEPENDENT_QP, i+1, num_components, qp->quant_ch[i]);
     }
   } else {
     TRACEMSS(iinfo,0,JXRTRC_RESERVED_VALUE,"COMPONENT_MODE");
@@ -409,23 +415,36 @@ parse_hp_qp (j_image_ptr iinfo, unsigned int num_components, unsigned int num_qp
  *  
  */          
 LOCAL(int)
-read_plane_header (j_image_ptr iinfo, jxr_image_header * hdr, boolean alpha)
+read_plane_header (j_image_ptr iinfo, boolean alpha)
 {
   UINT8 b; // for <=8 bits
   UINT8 c, cc;
   UINT16 c2;
   UINT32 c4;
   
-  /* Temporary header used during parsing */
-  jxr_image_plane_header plane_hdr;
+  jxr_image_header * hdr = iinfo->hdr;
+  
+  /* Allocate memory for header used during parsing */
+  jxr_image_plane_header * plane_hdr = (*iinfo->mem->alloc_small) (
+			  (j_common_ptr) iinfo,
+			  JPOOL_IMAGE,
+			  SIZEOF(jxr_image_plane_header)
+			);
   /* Allocate memory for plane decompression variables */
   jxr_image_plane_vars * plane_vars = (*iinfo->mem->alloc_small) (
 			  (j_common_ptr) iinfo,
 			  JPOOL_IMAGE,
 			  SIZEOF(jxr_image_plane_vars)
 			);
-  if (alpha) iinfo->alpha_plane_vars = plane_vars;
-  else       iinfo->image_plane_vars = plane_vars;
+  if (alpha) {
+    iinfo->alpha_plane_hdr = plane_hdr;
+    iinfo->alpha_plane_vars = plane_vars;
+    plane_vars->is_curr_plane_alpha_flag = TRUE;
+  } else {
+    iinfo->image_plane_hdr = plane_hdr;
+    iinfo->image_plane_vars = plane_vars;
+    plane_vars->is_curr_plane_alpha_flag = FALSE;
+  }
   
   /* Definitions to output enum strings */
   DEFINE_ENUM( JXR_BANDS_PRESENT, JXR_BANDS_PRESENT_DEF );
@@ -438,18 +457,18 @@ read_plane_header (j_image_ptr iinfo, jxr_image_header * hdr, boolean alpha)
   /* Read in first byte */
   INPUT_BYTE(((j_common_ptr)iinfo),c,return FALSE);
   // internal colour format (3 bits)
-  plane_hdr.internal_clr_fmt = GETBITS(c,0,3);
+  plane_hdr->internal_clr_fmt = GETBITS(c,0,3);
   TRACEMSS(iinfo,3,JXRTRC_INTERNAL_CLR_FORMAT,
-    GetString_JXR_INTERNAL_CLR_FMT( plane_hdr.internal_clr_fmt) );
+    GetString_JXR_INTERNAL_CLR_FMT( plane_hdr->internal_clr_fmt) );
   // scaled flag
-  plane_hdr.scaled_flag = GETBITS(c,3,1);
-  TRACEMS1(iinfo,3,JXRTRC_SCALED_FLAG,plane_hdr.scaled_flag);
+  plane_hdr->scaled_flag = GETBITS(c,3,1);
+  TRACEMS1(iinfo,3,JXRTRC_SCALED_FLAG,plane_hdr->scaled_flag);
   // bands present (4 bits)
-  plane_hdr.bands_present = GETBITS(c,4,4);
-  TRACEMSS(iinfo,3,JXRTRC_BANDS_PRESENT, GetString_JXR_BANDS_PRESENT(plane_hdr.bands_present));
+  plane_hdr->bands_present = GETBITS(c,4,4);
+  TRACEMSS(iinfo,3,JXRTRC_BANDS_PRESENT, GetString_JXR_BANDS_PRESENT(plane_hdr->bands_present));
   // calculate number of bands
-  plane_vars->num_bands = determine_num_bands(iinfo,&plane_hdr);
-  printf("%u frequency bands present in plane\n",plane_vars->num_bands);
+  plane_vars->num_bands = determine_num_bands(iinfo,plane_hdr);
+  TRACEMS1(iinfo, 3, JXRTRC_FREQUENCY_BANDS, plane_vars->num_bands);
   if (!alpha) {
     iinfo->vars->num_bands_of_primary = plane_vars->num_bands;
   } else if (plane_vars->num_bands > iinfo->vars->num_bands_of_primary) {
@@ -458,72 +477,72 @@ read_plane_header (j_image_ptr iinfo, jxr_image_header * hdr, boolean alpha)
   
   /* Internal colour format specific parameters */
   // Defaults
-  plane_hdr.chroma_centering_x = 0;
-  plane_hdr.chroma_centering_y = 0;
-  if (plane_hdr.internal_clr_fmt ==  JINTCOL_YUV444 ||
-      plane_hdr.internal_clr_fmt ==  JINTCOL_YUV420 ||
-      plane_hdr.internal_clr_fmt ==  JINTCOL_YUV422) {
+  plane_hdr->chroma_centering_x = 0;
+  plane_hdr->chroma_centering_y = 0;
+  if (plane_hdr->internal_clr_fmt ==  JINTCOL_YUV444 ||
+      plane_hdr->internal_clr_fmt ==  JINTCOL_YUV420 ||
+      plane_hdr->internal_clr_fmt ==  JINTCOL_YUV422) {
     
     /* We only require one byte of colour format specific stuff in this
      * case */
     INPUT_BYTE(((j_common_ptr)iinfo),c,return FALSE);
     /* First four bits */
-    if (plane_hdr.internal_clr_fmt == JINTCOL_YUV420 ||
-        plane_hdr.internal_clr_fmt == JINTCOL_YUV422) {
-      plane_hdr.reserved_e_bit = GETBITS(c,0,1);
-      if (plane_hdr.reserved_e_bit != 0) TRACEMSS(iinfo,0,JXRTRC_FUTURE_SPEC,"RESERVED_E_BIT");
-      plane_hdr.chroma_centering_x = GETBITS(c,1,3);
-      TRACEMS1(iinfo,3,JXTRC_CHROMA_CENTRE_X,plane_hdr.chroma_centering_x);
+    if (plane_hdr->internal_clr_fmt == JINTCOL_YUV420 ||
+        plane_hdr->internal_clr_fmt == JINTCOL_YUV422) {
+      plane_hdr->reserved_e_bit = GETBITS(c,0,1);
+      if (plane_hdr->reserved_e_bit != 0) TRACEMSS(iinfo,0,JXRTRC_FUTURE_SPEC,"RESERVED_E_BIT");
+      plane_hdr->chroma_centering_x = GETBITS(c,1,3);
+      TRACEMS1(iinfo,3,JXTRC_CHROMA_CENTRE_X,plane_hdr->chroma_centering_x);
       // check for reserved values
-      if (plane_hdr.chroma_centering_x == 5 || plane_hdr.chroma_centering_x == 6) {
-        plane_hdr.chroma_centering_x = 7;
+      if (plane_hdr->chroma_centering_x == 5 || plane_hdr->chroma_centering_x == 6) {
+        plane_hdr->chroma_centering_x = 7;
         TRACEMSS(iinfo,0,JXRTRC_RESERVED_VALUE,"CHROMA_CENTERING_X");
       }
-    } else if (plane_hdr.internal_clr_fmt == JINTCOL_YUV444) {
-      plane_hdr.reserved_f = GETBITS(c,0,4);
-      if (plane_hdr.reserved_f != 0) TRACEMSS(iinfo,0,JXRTRC_FUTURE_SPEC,"RESERVED_F");
+    } else if (plane_hdr->internal_clr_fmt == JINTCOL_YUV444) {
+      plane_hdr->reserved_f = GETBITS(c,0,4);
+      if (plane_hdr->reserved_f != 0) TRACEMSS(iinfo,0,JXRTRC_FUTURE_SPEC,"RESERVED_F");
     }
     
     /* Last four bits */
-    if (plane_hdr.internal_clr_fmt == JINTCOL_YUV420) {
-      plane_hdr.reserved_g_bit = GETBITS(c,4,1);
-      if (plane_hdr.reserved_g_bit != 0) TRACEMSS(iinfo,0,JXRTRC_FUTURE_SPEC,"RESERVED_G_BIT");
-      plane_hdr.chroma_centering_y = GETBITS(c,5,3);
-      TRACEMS1(iinfo,3,JXTRC_CHROMA_CENTRE_Y,plane_hdr.chroma_centering_y);
+    if (plane_hdr->internal_clr_fmt == JINTCOL_YUV420) {
+      plane_hdr->reserved_g_bit = GETBITS(c,4,1);
+      if (plane_hdr->reserved_g_bit != 0) TRACEMSS(iinfo,0,JXRTRC_FUTURE_SPEC,"RESERVED_G_BIT");
+      plane_hdr->chroma_centering_y = GETBITS(c,5,3);
+      TRACEMS1(iinfo,3,JXTRC_CHROMA_CENTRE_Y,plane_hdr->chroma_centering_y);
       // check for reserved values
-      if (plane_hdr.chroma_centering_y == 5 || plane_hdr.chroma_centering_y == 6) {
-        plane_hdr.chroma_centering_y = 7;
+      if (plane_hdr->chroma_centering_y == 5 || plane_hdr->chroma_centering_y == 6) {
+        plane_hdr->chroma_centering_y = 7;
         TRACEMSS(iinfo,0,JXRTRC_RESERVED_VALUE,"CHROMA_CENTERING_Y");
       }
     } else {
-      plane_hdr.reserved_h = GETBITS(c,4,4);
-      if (plane_hdr.reserved_h != 0) TRACEMSS(iinfo,0,JXRTRC_FUTURE_SPEC,"RESERVED_H");
+      plane_hdr->reserved_h = GETBITS(c,4,4);
+      if (plane_hdr->reserved_h != 0) TRACEMSS(iinfo,0,JXRTRC_FUTURE_SPEC,"RESERVED_H");
     }
     
-  } else if (plane_hdr.internal_clr_fmt == JINTCOL_NCOMPONENT) {
+  } else if (plane_hdr->internal_clr_fmt == JINTCOL_NCOMPONENT) {
     // TODO - test and output etc etc
     /* Here we require one OR two bytes of colour format specific stuff */
     INPUT_BYTE(((j_common_ptr)iinfo), c, return FALSE);
     /* First four bits */
-    plane_hdr.num_components_minus1 = GETBITS(c,0,4);
-    if (plane_hdr.num_components_minus1 == 0xf) {
+    plane_hdr->num_components_minus1 = GETBITS(c,0,4);
+    if (plane_hdr->num_components_minus1 == 0xf) {
       /* Last 12 bits... */
       INPUT_BYTE(((j_common_ptr)iinfo), cc, return FALSE);
-      plane_hdr.num_components_extended_minus16 =
+      plane_hdr->num_components_extended_minus16 =
           (GETBITS(c,4,4) << 4) + GETBITS(cc,0,8);
     } else {
       /* ...or alternatively - last 4 bits */
-      plane_hdr.reserved_h = GETBITS(c,4,4);
+      plane_hdr->reserved_h = GETBITS(c,4,4);
     }
         
   }
   
   /* We can now determine the number of components */
-  plane_vars->num_components = determine_num_components(iinfo, &plane_hdr);
+  plane_vars->num_components = determine_num_components(iinfo, plane_hdr);
   
   /* For the primary image plane, we can now calculate the extended
    * dimensions */
-  if (!alpha) calculate_component_array_sizes (iinfo, hdr, &plane_hdr);
+  if (!alpha) calculate_component_array_sizes (iinfo, hdr, plane_hdr);
   
   /* Output bit depth specific parameters */
   // TODO check and output
@@ -531,12 +550,12 @@ read_plane_header (j_image_ptr iinfo, jxr_image_header * hdr, boolean alpha)
   if (hdr->output_bitdepth == JOUTDEP_BD16  ||
       hdr->output_bitdepth == JOUTDEP_BD16S ||
       hdr->output_bitdepth == JOUTDEP_BD32S) {
-        plane_hdr.shift_bits = c;
+        plane_hdr->shift_bits = c;
   } else if (
       hdr->output_bitdepth == JOUTDEP_BD32F) {
         INPUT_BYTE(((j_common_ptr)iinfo),cc,return FALSE);
-        plane_hdr.len_mantissa = c;
-        plane_hdr.exp_bias = cc;
+        plane_hdr->len_mantissa = c;
+        plane_hdr->exp_bias = cc;
   } else if (
       hdr->output_bitdepth == JOUTDEP_RESERVED1 ||
       hdr->output_bitdepth == JOUTDEP_RESERVED2) {
@@ -546,40 +565,44 @@ read_plane_header (j_image_ptr iinfo, jxr_image_header * hdr, boolean alpha)
   /* QP sets (unfortunately these aren't nicely byte aligned) */
   INPUT_BITS(((j_common_ptr)iinfo),b,1,return FALSE);
   // dc_image_plane_uniform_flag
-  plane_hdr.dc_image_plane_uniform_flag = b;
-  TRACEMS1(iinfo,3,JXTRC_DC_UNIFORM,plane_hdr.dc_image_plane_uniform_flag);
+  plane_hdr->dc_image_plane_uniform_flag = b;
+  TRACEMS1(iinfo,3,JXTRC_DC_UNIFORM,plane_hdr->dc_image_plane_uniform_flag);
   
   // read in DC QPs if they are the same for all tiles
-  if (plane_hdr.dc_image_plane_uniform_flag) {
+  if (plane_hdr->dc_image_plane_uniform_flag) {
     INPUT_SYNC(iinfo);
-    parse_dc_qp(iinfo, plane_vars->num_components, &plane_hdr.dc_qp);
+    parse_dc_qp(iinfo, plane_vars->num_components, &plane_hdr->dc_qp);
     INPUT_RELOAD(iinfo);
   }
   // read in low and high pass QPs if they are the same for all tiles
-  if (plane_hdr.bands_present != JBANDS_DCONLY) {
+  if (plane_hdr->bands_present != JBANDS_DCONLY) {
     INPUT_BITS(((j_common_ptr)iinfo),b,1,return FALSE);
-    plane_hdr.reserved_i_bit = b;
+    plane_hdr->reserved_i_bit = b;
     INPUT_BITS(((j_common_ptr)iinfo),b,1,return FALSE);
-    plane_hdr.lp_image_plane_uniform_flag = b;
-    TRACEMS1(iinfo,3,JXTRC_LP_UNIFORM,plane_hdr.lp_image_plane_uniform_flag);
+    plane_hdr->lp_image_plane_uniform_flag = b;
+    TRACEMS1(iinfo,3,JXTRC_LP_UNIFORM,plane_hdr->lp_image_plane_uniform_flag);
     
     // low pass
-    if (plane_hdr.lp_image_plane_uniform_flag) {
+    if (plane_hdr->lp_image_plane_uniform_flag) {
+      // first set number of LP QPs
+      plane_vars->num_lp_qps = 1;
       INPUT_SYNC(iinfo);
-      parse_lp_qp(iinfo,plane_vars->num_components,1,&plane_hdr.lp_qp);
+      parse_lp_qp(iinfo,plane_vars->num_components,1,&plane_hdr->lp_qp);
       INPUT_RELOAD(iinfo);
     }
     // high pass
-    if (plane_hdr.bands_present != JBANDS_NOHIGHPASS) {
+    if (plane_hdr->bands_present != JBANDS_NOHIGHPASS) {
       INPUT_BITS(((j_common_ptr)iinfo),b,1,return FALSE);
-      plane_hdr.reserved_j_bit = b;
+      plane_hdr->reserved_j_bit = b;
       INPUT_BITS(((j_common_ptr)iinfo),b,1,return FALSE);
-      plane_hdr.hp_image_plane_uniform_flag = b;
-      TRACEMS1(iinfo,3,JXTRC_HP_UNIFORM,plane_hdr.hp_image_plane_uniform_flag);
+      plane_hdr->hp_image_plane_uniform_flag = b;
+      TRACEMS1(iinfo,3,JXTRC_HP_UNIFORM,plane_hdr->hp_image_plane_uniform_flag);
       
-      if (plane_hdr.hp_image_plane_uniform_flag) {
+      if (plane_hdr->hp_image_plane_uniform_flag) {
+        // first set number of HP QPs
+        plane_vars->num_hp_qps = 1;
         INPUT_SYNC(iinfo);
-        parse_hp_qp(iinfo,plane_vars->num_components,1,&plane_hdr.hp_qp);
+        parse_hp_qp(iinfo,plane_vars->num_components,1,&plane_hdr->hp_qp);
         INPUT_RELOAD(iinfo);
       }
     }
@@ -600,8 +623,10 @@ read_plane_header (j_image_ptr iinfo, jxr_image_header * hdr, boolean alpha)
  *  
  */          
 LOCAL(int)
-determine_tile_boundaries (j_image_ptr iinfo, jxr_image_header * hdr)
+determine_tile_boundaries (j_image_ptr iinfo)
 {
+  
+  jxr_image_header * hdr = iinfo->hdr;
   
   // First allocate storage
    iinfo->vars->left_mb_index_of_tile = (*iinfo->mem->alloc_small) (
@@ -640,7 +665,7 @@ determine_tile_boundaries (j_image_ptr iinfo, jxr_image_header * hdr)
   for (unsigned int i = 0; i < hdr->num_hor_tiles_minus1 + 1; i++) {
     for (unsigned int j = 0; j < hdr->num_ver_tiles_minus1 + 1; j++) {
       iinfo->vars->num_mb_in_tile[n] =
-        hdr->tile_height_in_mb[i] * hdr->tile_width_in_mb[j];
+        (hdr->tile_height_in_mb[i]) * (hdr->tile_width_in_mb[j]);
       n++;
     }
   }
@@ -658,11 +683,13 @@ determine_tile_boundaries (j_image_ptr iinfo, jxr_image_header * hdr)
  *  
  */          
 LOCAL(int)
-read_header (j_image_ptr iinfo, jxr_image_header * hdr)
+read_image_header (j_image_ptr iinfo)
 {
   UINT8 c, cc, ccc;
   UINT16 c2;
   UINT32 c4, cc4;
+  
+  jxr_image_header * hdr = iinfo->hdr;
   
   INPUT_VARS(iinfo);
   
@@ -707,7 +734,7 @@ read_header (j_image_ptr iinfo, jxr_image_header * hdr)
     hdr->spatial_xfrm_subordinate.fill);
   // index_table_present_flag
   hdr->index_table_present_flag = GETBITS(c,5,1);
-  TRACEMS1(iinfo,3,JXRTRC_IDX_TABLE,GETBITS(c,5,1));
+  TRACEMS1(iinfo,3,JXRTRC_IDX_TABLE_PRESENT,GETBITS(c,5,1));
   // overlap_mode (2 bits)
   hdr->overlap_mode = GETBITS(c,6,2);
   TRACEMS1(iinfo,3,JXRTRC_OVERLAP_MODE, hdr->overlap_mode);
@@ -778,41 +805,33 @@ read_header (j_image_ptr iinfo, jxr_image_header * hdr)
   
 
   /* Read in tile sequences, if present */
-  // TODO - might not need to allocate here if we can drop this after writing
-  // to vars
-  if (hdr->tiling_flag) {
-    // allocate memory
-    UINT16 * tile_height_in_mb = (*iinfo->mem->alloc_small) (
-              (j_common_ptr) iinfo,
-              JPOOL_IMAGE,
-              hdr->num_ver_tiles_minus1 * SIZEOF(UINT16)
-          );
-    UINT16 * tile_width_in_mb = (*iinfo->mem->alloc_small) (
-              (j_common_ptr) iinfo,
-              JPOOL_IMAGE,
-              hdr->num_hor_tiles_minus1 * SIZEOF(UINT16)
-          );
-    // read in from stream
-    for (int i=0; i<hdr->num_ver_tiles_minus1; i++) {
-      if (hdr->short_header_flag)  INPUT_BYTE(((j_common_ptr)iinfo),c2,return FALSE);
-      else                        INPUT_2BYTES(((j_common_ptr)iinfo),c2,return FALSE);
-      TRACEMS3(iinfo,4,JXRTRC_TILE_VSEQUENCE, i+1, hdr->num_ver_tiles_minus1+1, c2);
-      tile_width_in_mb[i] = c2;
-    }
-    for (int i=0; i<hdr->num_hor_tiles_minus1; i++) {
-      if (hdr->short_header_flag)  INPUT_BYTE(((j_common_ptr)iinfo),c2,return FALSE);
-      else                        INPUT_2BYTES(((j_common_ptr)iinfo),c2,return FALSE);
-      TRACEMS3(iinfo,4,JXRTRC_TILE_HSEQUENCE, i+1, hdr->num_hor_tiles_minus1+1, c2);
-      tile_height_in_mb[i] = c2;
-    }
-    
-    // Save to hdr
-    hdr->tile_height_in_mb = tile_height_in_mb;
-    hdr->tile_width_in_mb = tile_width_in_mb;
+  // allocate memory
+  hdr->tile_height_in_mb = (*iinfo->mem->alloc_small) (
+            (j_common_ptr) iinfo,
+            JPOOL_IMAGE,
+            hdr->num_ver_tiles_minus1 * SIZEOF(UINT16)
+        );
+  hdr->tile_width_in_mb = (*iinfo->mem->alloc_small) (
+            (j_common_ptr) iinfo,
+            JPOOL_IMAGE,
+            hdr->num_hor_tiles_minus1 * SIZEOF(UINT16)
+        );
+  // read in from stream
+  for (int i=0; i<hdr->num_ver_tiles_minus1; i++) {
+    if (hdr->short_header_flag)  INPUT_BYTE(((j_common_ptr)iinfo),c2,return FALSE);
+    else                        INPUT_2BYTES(((j_common_ptr)iinfo),c2,return FALSE);
+    TRACEMS3(iinfo,4,JXRTRC_TILE_VSEQUENCE, i+1, hdr->num_ver_tiles_minus1+1, c2);
+    hdr->tile_width_in_mb[i] = c2;
+  }
+  for (int i=0; i<hdr->num_hor_tiles_minus1; i++) {
+    if (hdr->short_header_flag)  INPUT_BYTE(((j_common_ptr)iinfo),c2,return FALSE);
+    else                        INPUT_2BYTES(((j_common_ptr)iinfo),c2,return FALSE);
+    TRACEMS3(iinfo,4,JXRTRC_TILE_HSEQUENCE, i+1, hdr->num_hor_tiles_minus1+1, c2);
+    hdr->tile_height_in_mb[i] = c2;
   }
   
   /* We can now calculate tile MB boundaries and MB size */
-  determine_tile_boundaries(iinfo,hdr);
+  determine_tile_boundaries(iinfo);
 
   
   /* Read window margins, if present */
@@ -839,20 +858,25 @@ read_header (j_image_ptr iinfo, jxr_image_header * hdr)
 
 /*
  * Read a JPEG-XR image to obtain headers and decompression
- * parameters. This reads image, tile and macroblock layer 
- * information. The source data should be at the start of the image
+ * parameters. This reads image and image plane layer information.
+ * The source data should be at the start of the image
  * codestream.
  *  
  */          
 GLOBAL(int)
-jpegxr_image_read_metadata (j_image_ptr iinfo)
+jpegxr_image_read_header (j_image_ptr iinfo)
 {
 
   TRACEMS(iinfo,1,JXRTRC_IMAGE_BEGIN);
   
-  /* Static allocation for header structure, which we will use during
-   * parsing */
-  jxr_image_header hdr;
+  /* Allocate memory for header structure, since it is required for tile
+   * and MB layer parsing and thus for decompression (since tile and 
+   * MB layer parsing is postponed until decompression) */
+  iinfo->hdr = (*iinfo->mem->alloc_small) (
+      (j_common_ptr) iinfo,
+      JPOOL_IMAGE,
+      SIZEOF(jxr_image_header)
+  );
   /* Allocate memory for decompression variables */
   iinfo->vars = (*iinfo->mem->alloc_small) (
       (j_common_ptr) iinfo,
@@ -861,18 +885,18 @@ jpegxr_image_read_metadata (j_image_ptr iinfo)
   );
     
   /* Read the image header at the start of the codestream */
-  read_header (iinfo, &hdr);
+  read_image_header (iinfo);
   
   /* Read the image plane header */
-  read_plane_header (iinfo, &hdr, FALSE);
+  read_plane_header (iinfo, FALSE);
   
   /* Read the alpha plane header, if one is present */
-  if (hdr.alpha_image_plane_flag)
-    read_plane_header (iinfo, &hdr, TRUE);
+  if (iinfo->hdr->alpha_image_plane_flag)
+    read_plane_header (iinfo, TRUE);
   
   /* Read the tile index table, if one is present */
-  if (hdr.index_table_present_flag)
-    read_index_table (iinfo, &hdr);
+  if (iinfo->hdr->index_table_present_flag)
+    read_index_table (iinfo);
   
   /* Read additional bytes before coded image */
   read_additional (iinfo);

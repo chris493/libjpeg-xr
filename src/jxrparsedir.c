@@ -6,7 +6,7 @@
  * This file is part of the Independent JPEG Group's software.
  * For conditions of distribution and use, see the accompanying README file.
  * 
- * This file contains algorithms used to parse the file layer of .jxr
+ * This file contains algorithms used to parse the directory layer of .jxr
  * input file.
  */
 
@@ -192,7 +192,7 @@ jpegxr_dir_read_header (j_dir_ptr dinfo)
 
 /*
  * Read a JPEG-XR directory to obtain headers and decompression
- * parameters. This reads directory, image, tile and macroblock layer 
+ * parameters. This reads directory, image, and image plane layer 
  * information. The source data should be at the start of the directory
  * header.
  *
@@ -236,7 +236,7 @@ jpegxr_dir_read_metadata (j_dir_ptr dinfo)
   dinfo->image->src = dinfo->src;
   
   /* Read the coded image header */
-  jpegxr_image_read_metadata(iinfo);
+  jpegxr_image_read_header(iinfo);
   
   return retcode;
 }

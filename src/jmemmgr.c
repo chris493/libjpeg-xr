@@ -1116,3 +1116,22 @@ jinit_memory_mgr (j_common_ptr cinfo)
 #endif
 
 }
+
+
+/* Zero out a chunk of FAR memory. */
+/* This might be sample-array data, block-array data, or alloc_large data.
+ * Note - this was moved from jutils.c for libjpeg-xr. */
+GLOBAL(void)
+jzero_far (void FAR * target, size_t bytestozero)
+{
+#ifdef FMEMZERO
+  FMEMZERO(target, bytestozero);
+#else
+  register char FAR * ptr = (char FAR *) target;
+  register size_t count;
+
+  for (count = bytestozero; count > 0; count--) {
+    *ptr++ = 0;
+  }
+#endif
+}

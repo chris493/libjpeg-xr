@@ -196,11 +196,15 @@ JMESSAGE(JXRERR_WRONG_GDI_SIG,
   "Wrong GDI signature: got 0x%x%x, expecting 0x%x%x")
 JMESSAGE(JXRERR_64_BITS,
   "Images with 64-bit syntax elements are currently unsupprted")
+JMESSAGE(JXRERR_BAD_SEEK,
+  "Fatal error: tried to seek back to data no longer in buffer")
   
 /* Warnings */
 JMESSAGE(JXRWRN_IMAGE_INCOMPATIBLE, "Warning: codestream is probably incompatible")
 JMESSAGE(JXRWRN_RESERVED_VALUE, "Warning: found a reserved value for %s")
 JMESSAGE(JXRWRN_NUM_BANDS, "Warning: alpha plane can't have more bands present than primary")
+JMESSAGE(JXRWRN_PROFILE_UNSUPPORTED, "Warning: profile IDC value %u is greater than %u, the maximum supported")
+
 
 /* Trace messages */
 JMESSAGE(JXRTRC_FILE_BEGIN_META, "Reading file metadata")
@@ -247,7 +251,7 @@ JMESSAGE(JXRTRC_TILING, "Tiling flag set to %u")
 JMESSAGE(JXRTRC_FREQ_MODE, "Frequency mode flag set to %u")
 JMESSAGE(JXRTRC_XFRM_SUB,
   "Spatial transform subordinate has CW rotation %u and flip (%u, %u)")
-JMESSAGE(JXRTRC_IDX_TABLE, "Index table present flag set to %u")
+JMESSAGE(JXRTRC_IDX_TABLE_PRESENT, "Index table present flag set to %u")
 JMESSAGE(JXRTRC_OVERLAP_MODE, "Overlap mode is 0x%x")
 JMESSAGE(JXRTRC_SHORT_HEADER,      "Short header flag set to %u")
 JMESSAGE(JXRTRC_LONG_WORD,         "Long word flag set to %u")
@@ -277,6 +281,23 @@ JMESSAGE(JXRTRC_PARSE_HP_QP, "Reading high pass quantisation parameter set at by
 
 JMESSAGE(JXRTRC_INDEX_TABLE_BEGIN, "Reading tile index table at offset 0x%x")
 
+JMESSAGE(JXRTRC_NUM_COMP, "Image contains %u components")
+JMESSAGE(JXRTRC_PROFILE_INFO, "Reading profile info at byte offset 0x%x")
+JMESSAGE(JXRTRC_PROFILE_SUPPORTED, "Profile IDC value %u is decoder compatible")
+JMESSAGE(JXRTRC_IBYTES, "Found %u i_bytes")
+JMESSAGE(JXRTRC_VLW_ESC, "VLW ESC found i_value 0x%x")
+JMESSAGE(JXRTRC_BEGIN_ABYTES, "Reading additional bytes at offset 0x%x")
+JMESSAGE(JXRTRC_SUBBYTES, "Found %u subsequent bytes")
+JMESSAGE(JXRTRC_SKIP_TO_TILES, "Skipping %u bytes (subsequent bytes - i_bytes) to coded tiles")
+JMESSAGE(JXRTRC_IDX_TABLE_ENTRIES, "Foud %u index table entries")
+JMESSAGE(JXRTRC_LUMA_DIMENSIONS, "Luma dimensions set to %u x %u")
+JMESSAGE(JXRTRC_CHROMA_DIMENSIONS, "Chroma dimensions set to %u x %u")
+JMESSAGE(JXRTRC_UNIFORM_QP, "UNIFORM component mode: quantisation parameter is %u")
+JMESSAGE(JXRTRC_SEPERATE_QP, "SEPERATE component mode: luma parameter %u, chroma parameter %u")
+JMESSAGE(JXRTRC_INDEPENDENT_QP, "INDEPENDENT component mode: quantisation parameter %u of %u is %u")
+JMESSAGE(JXRTRC_FREQUENCY_BANDS, "%u frequency bands present in plane")
+ 
+ 
 
 #ifdef JMAKE_ENUM_LIST
 

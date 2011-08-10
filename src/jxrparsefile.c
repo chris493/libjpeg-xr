@@ -22,7 +22,7 @@
 
 /*
  * Read JPEG-XR file to obtain headers and decompression parameters.
- * This reads file, directory, image, tile and macroblock layer 
+ * This reads file, directory, image, and image plane layer 
  * information. Need only initialize JPEG object and supply a data source
  * before calling.
  *

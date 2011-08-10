@@ -144,6 +144,73 @@ jpegxr_image_CreateDecompress (j_image_ptr iinfo, int version, size_t structsize
 }
 
 
+/*
+ * Start decompression. Read metadata must have already been called
+ */
+GLOBAL(void)
+jpegxr_file_start_decompress (j_file_ptr finfo)
+{
+    // TODO - some check that we are ready
+
+  /* For all directories contained in the file, begin decompression */
+  for (unsigned int i=0; i < finfo->num_dirs; i++) {
+    jpegxr_dir_start_decompress( finfo->dirs[i] );
+  }
+}
+GLOBAL(void)
+jpegxr_dir_start_decompress (j_dir_ptr dinfo)
+{
+    // TODO - some check that we are ready
+
+  /* For all images contained in the directory, begin decompression */
+  jpegxr_image_start_decompress( dinfo->image );
+}
+GLOBAL(void)
+jpegxr_image_start_decompress (j_image_ptr iinfo)
+{
+  
+  // TODO - some check that we are ready
+  
+  /* Calculate total number of tiles */
+  unsigned int num_tiles =  iinfo->vars->num_tile_cols
+                          * iinfo->vars->num_tile_cols;
+  
+  /* Allocate tile variables object */
+  iinfo->tile_vars = (*iinfo->mem->alloc_small) (
+        (j_common_ptr) iinfo,
+        JPOOL_IMAGE,
+        SIZEOF(jxr_tile_vars)
+  );
+  
+  /* If tiles are in spatial mode */
+  for (unsigned int n = 0; n < num_tiles; n++) {
+    /* Set current tile size in MB */
+    iinfo->tile_vars->num_mb_in_current_tile =
+      iinfo->vars->num_mb_in_tile[n];
+    /* Decode tile */
+    jpegxr_decode_tile_spatial (iinfo, n);
+  }
+  
+  /* If tiles are in frequency mode */
+  for (unsigned int n = 0; n < num_tiles; n++) {
+    /* Set current tile size in MB */
+    iinfo->tile_vars->num_mb_in_current_tile =
+      iinfo->vars->num_mb_in_tile[n];
+    /* Decode tile */
+    jpegxr_decode_tile_frequency (iinfo, n);
+  }
+  
+}
+
+
+/*
+ * Start decompression. Read metadata must have already been called
+ */
+GLOBAL(void)
+jpegxr_file_finish_decompress (j_file_ptr finfo)
+{
+
+}
 
 /*
  * Destruction of a JPEG-XR file decompression object
