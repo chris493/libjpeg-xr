@@ -64,7 +64,7 @@ jpegxr_dir_read_ifd_entries (j_dir_ptr dinfo, ifd_entry * ifd_entry_list)
 	/* Size depends on type */
 	switch (ifde->element_type) {
 	  case (JELEMTYPE_BYTE):
-	    for (int i=0; i<ifde->num_elements; i++) {
+	    for (int i=0; i < ifde->num_elements; i++) {
 	      INPUT_BYTE(((j_common_ptr)dinfo),c,return FALSE);
 	      TRACEMS3(dinfo,4,JXRTRC_DIR_READ_ENTRY_MULTIPLE, i+1, ifde->num_elements, c);
 	      dinfo->pixel_format[i] = c;

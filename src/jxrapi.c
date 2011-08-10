@@ -160,7 +160,7 @@ jpegxr_file_start_decompress (j_file_ptr finfo)
 GLOBAL(void)
 jpegxr_dir_start_decompress (j_dir_ptr dinfo)
 {
-    // TODO - some check that we are ready
+  // TODO - some check that we are ready
 
   /* For all images contained in the directory, begin decompression */
   jpegxr_image_start_decompress( dinfo->image );
@@ -169,7 +169,14 @@ GLOBAL(void)
 jpegxr_image_start_decompress (j_image_ptr iinfo)
 {
   
-  // TODO - some check that we are ready
+  /* TODO - some check that we are ready, i.e. at the start of coded 
+   * tiles */
+  
+  /* TODO - we assume for now that tiles are ordered sequentially so 
+   * we do not need to seek backwards. Eventually some implementation 
+   * should go here that sorts tiles into the order they appear, and 
+   * then allows them to be mapped to the correct output segment. */
+  
   
   /* Calculate total number of tiles */
   unsigned int num_tiles =  iinfo->vars->num_tile_cols

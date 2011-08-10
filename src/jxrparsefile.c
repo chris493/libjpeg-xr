@@ -55,32 +55,30 @@ jpegxr_file_read_metadata (j_file_ptr finfo)
   TRACEMS(finfo,2,JXRTRC_CREATE_DIR);
   finfo->num_dirs = 1;
   
-  /* Allocate storage for directory objects */
-  j_dir_ptr dirs = (*finfo->mem->alloc_small) (
-			      (j_common_ptr) finfo,
-			      JPOOL_IMAGE,
-			      finfo->num_dirs * SIZEOF(struct jpegxr_file_struct)
-			  );
-  j_dir_ptr * dirs_ptr = (*finfo->mem->alloc_small) (
+  /* Allocate storage for array of directory object pointers */
+  finfo->dirs = (*finfo->mem->alloc_small) (
 			      (j_common_ptr) finfo,
 			      JPOOL_IMAGE,
 			      finfo->num_dirs * SIZEOF(j_dir_ptr)
 			  );
-  finfo->dirs = dirs_ptr;
   
-  /* Initialise and read data for each directory */
+  /* Allocate, initialise and read data for each directory */
   for (unsigned int i=0; i < finfo->num_dirs; i++) {
-    dirs_ptr[i] = &dirs[i];
-    j_dir_ptr dinfo = finfo->dirs[i];
+    /* Allocate storage for directory object */
+    finfo->dirs[i] = (*finfo->mem->alloc_small) (
+            (j_common_ptr) finfo,
+            JPOOL_IMAGE,
+            SIZEOF(struct jpegxr_dir_struct)
+          );
      
     /* Initialize the JPEG-XR directory decompression object */
-    dinfo->err = finfo->err;
-    dinfo->mem = finfo->mem;
-    dinfo->progress = finfo->progress;
-    dinfo->src = finfo->src;
+    finfo->dirs[i]->err = finfo->err;
+    finfo->dirs[i]->mem = finfo->mem;
+    finfo->dirs[i]->progress = finfo->progress;
+    finfo->dirs[i]->src = finfo->src;
 
     /* Read the directory header */
-    jpegxr_dir_read_metadata( dinfo );
+    jpegxr_dir_read_metadata( finfo->dirs[i] );
   }
 
     /* TODO - what new return codes are needed? */
