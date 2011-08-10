@@ -179,21 +179,14 @@ jpegxr_image_start_decompress (j_image_ptr iinfo)
   
   
   /* Calculate total number of tiles */
-  unsigned int num_tiles =  iinfo->vars->num_tile_cols
-                          * iinfo->vars->num_tile_cols;
-  
-  /* Allocate tile variables object */
-  iinfo->tile_vars = (*iinfo->mem->alloc_small) (
-        (j_common_ptr) iinfo,
-        JPOOL_IMAGE,
-        SIZEOF(jxr_tile_vars)
-  );
+  unsigned int num_tiles =  iinfo->vars.num_tile_cols
+                          * iinfo->vars.num_tile_cols;
   
   /* If tiles are in spatial mode */
   for (unsigned int n = 0; n < num_tiles; n++) {
     /* Set current tile size in MB */
-    iinfo->tile_vars->num_mb_in_current_tile =
-      iinfo->vars->num_mb_in_tile[n];
+    iinfo->tile_vars.num_mb_in_current_tile =
+      iinfo->vars.num_mb_in_tile[n];
     /* Decode tile */
     jpegxr_decode_tile_spatial (iinfo, n);
   }
@@ -201,8 +194,8 @@ jpegxr_image_start_decompress (j_image_ptr iinfo)
   /* If tiles are in frequency mode */
   for (unsigned int n = 0; n < num_tiles; n++) {
     /* Set current tile size in MB */
-    iinfo->tile_vars->num_mb_in_current_tile =
-      iinfo->vars->num_mb_in_tile[n];
+    iinfo->tile_vars.num_mb_in_current_tile =
+      iinfo->vars.num_mb_in_tile[n];
     /* Decode tile */
     jpegxr_decode_tile_frequency (iinfo, n);
   }

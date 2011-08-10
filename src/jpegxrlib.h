@@ -577,20 +577,20 @@ struct jpegxr_image_struct {
   unsigned int offset;
   
   /* Image header and variables */
-  jxr_image_header 	* hdr;
-  jxr_image_vars 	* vars;
+  jxr_image_header 	hdr;
+  jxr_image_vars 	vars;
   
   /* Headers and variables for each (image and alpha) plane */
-  jxr_image_plane_vars * image_plane_vars;
-  jxr_image_plane_header * image_plane_hdr;
-  jxr_image_plane_vars * alpha_plane_vars; /* NULL if no alpha plane */
-  jxr_image_plane_header * alpha_plane_hdr; /* NULL if no alpha plane */
+  jxr_image_plane_vars image_plane_vars;
+  jxr_image_plane_header image_plane_hdr;
+  jxr_image_plane_vars alpha_plane_vars; /* NULL if no alpha plane */
+  jxr_image_plane_header alpha_plane_hdr; /* NULL if no alpha plane */
 
   /* Tile variables */
-  jxr_tile_vars * tile_vars;
+  jxr_tile_vars tile_vars;
   
   /* Macroblock variables */
-  jxr_mb_vars * mb_vars;
+  jxr_mb_vars mb_vars;
   
 };
 

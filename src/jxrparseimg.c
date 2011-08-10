@@ -180,17 +180,17 @@ read_additional (j_image_ptr iinfo)
   TRACEMS1(iinfo,2,JXRTRC_BEGIN_ABYTES ,idx);
 
   // Read subsequent bytes value
-  vlw_esc(iinfo, &iinfo->vars->subsequent_bytes, 1);
-  TRACEMS1(iinfo,3,JXRTRC_SUBBYTES, iinfo->vars->subsequent_bytes );
+  vlw_esc(iinfo, &iinfo->vars.subsequent_bytes, 1);
+  TRACEMS1(iinfo,3,JXRTRC_SUBBYTES, iinfo->vars.subsequent_bytes );
   
-  if (iinfo->vars->subsequent_bytes > 0) {
+  if (iinfo->vars.subsequent_bytes > 0) {
     
     /* Read profile information and check supported */
     read_profile_level_info(iinfo,&i_bytes);
     
     // Calculate how many bytes before the coded tiles 
     UINT16 value_additional_bytes = 
-      iinfo->vars->subsequent_bytes - i_bytes;
+      iinfo->vars.subsequent_bytes - i_bytes;
     
     TRACEMS1(iinfo,2,JXRTRC_SKIP_TO_TILES, value_additional_bytes);
 
@@ -214,8 +214,9 @@ read_index_table (j_image_ptr iinfo)
   UINT16 c2;
   UINT16 num_index_table_entries;
   INPUT_VARS(iinfo);
-    
-  jxr_image_header * hdr = iinfo->hdr;  
+  
+  /* Alias to header */
+  jxr_image_header * hdr = &iinfo->hdr;  
   
   TRACEMS1(iinfo,2,JXRTRC_INDEX_TABLE_BEGIN,idx);
   
@@ -228,7 +229,7 @@ read_index_table (j_image_ptr iinfo)
     num_index_table_entries =
       (hdr->num_hor_tiles_minus1 + 1) *
       (hdr->num_ver_tiles_minus1 + 1) *
-      (iinfo->vars->num_bands_of_primary);
+      (iinfo->vars.num_bands_of_primary);
   }
   TRACEMS1( iinfo, 3, JXRTRC_IDX_TABLE_ENTRIES, num_index_table_entries);
   
@@ -244,7 +245,7 @@ read_index_table (j_image_ptr iinfo)
         JPOOL_IMAGE,
         num_index_table_entries * SIZEOF(UINT16)
   );
-  iinfo->vars->index_offset_tile = index_offset_tile;
+  iinfo->vars.index_offset_tile = index_offset_tile;
   /* Read the index table offset entries */
   INPUT_SYNC(iinfo);
   vlw_esc(iinfo, index_offset_tile, num_index_table_entries);
@@ -261,15 +262,15 @@ calculate_component_array_sizes (j_image_ptr iinfo, jxr_image_header * hdr, jxr_
   UINT32 * extended_width = (*iinfo->mem->alloc_small) (
         (j_common_ptr) iinfo,
         JPOOL_IMAGE,
-        (iinfo->image_plane_vars->num_components) * SIZEOF(UINT32)
+        (iinfo->image_plane_vars.num_components) * SIZEOF(UINT32)
   );
   UINT32 * extended_height = (*iinfo->mem->alloc_small) (
         (j_common_ptr) iinfo,
         JPOOL_IMAGE,
-        (iinfo->image_plane_vars->num_components) * SIZEOF(UINT32)
+        (iinfo->image_plane_vars.num_components) * SIZEOF(UINT32)
   );
-  iinfo->vars->extended_width = extended_width;
-  iinfo->vars->extended_height = extended_height;
+  iinfo->vars.extended_width = extended_width;
+  iinfo->vars.extended_height = extended_height;
   
   /* Calculate extended dimensions for luma component */
   extended_width[0]  = hdr->width_minus1 + 1 +
@@ -300,14 +301,14 @@ calculate_component_array_sizes (j_image_ptr iinfo, jxr_image_header * hdr, jxr_
   
   /* Specification says all other dimensions are the same,
    * slightly pointless but for clarity we duplicate them */
-  for (unsigned int i=1; i < iinfo->image_plane_vars->num_components; i++) {
+  for (unsigned int i=1; i < iinfo->image_plane_vars.num_components; i++) {
       extended_height[i] = extended_height[1];
       extended_width[i] = extended_width[1];
   }
   
   /* Also store sizes in macroblocks, one MB = 16x16 samples */
-  iinfo->vars->mb_height = extended_height[0] / 16;
-  iinfo->vars->mb_width = extended_width[0] / 16;
+  iinfo->vars.mb_height = extended_height[0] / 16;
+  iinfo->vars.mb_width = extended_width[0] / 16;
   
 }
 
@@ -422,27 +423,18 @@ read_plane_header (j_image_ptr iinfo, boolean alpha)
   UINT16 c2;
   UINT32 c4;
   
-  jxr_image_header * hdr = iinfo->hdr;
-  
-  /* Allocate memory for header used during parsing */
-  jxr_image_plane_header * plane_hdr = (*iinfo->mem->alloc_small) (
-			  (j_common_ptr) iinfo,
-			  JPOOL_IMAGE,
-			  SIZEOF(jxr_image_plane_header)
-			);
-  /* Allocate memory for plane decompression variables */
-  jxr_image_plane_vars * plane_vars = (*iinfo->mem->alloc_small) (
-			  (j_common_ptr) iinfo,
-			  JPOOL_IMAGE,
-			  SIZEOF(jxr_image_plane_vars)
-			);
+  /* Aliases to headers and vars */
+  jxr_image_header * hdr = &iinfo->hdr;
+  jxr_image_plane_header * plane_hdr;
+  jxr_image_plane_vars * plane_vars;
+  /* set alpha flag while where at it */
   if (alpha) {
-    iinfo->alpha_plane_hdr = plane_hdr;
-    iinfo->alpha_plane_vars = plane_vars;
+    plane_hdr = &iinfo->alpha_plane_hdr;
+    plane_vars = &iinfo->alpha_plane_vars;
     plane_vars->is_curr_plane_alpha_flag = TRUE;
   } else {
-    iinfo->image_plane_hdr = plane_hdr;
-    iinfo->image_plane_vars = plane_vars;
+    plane_hdr = &iinfo->image_plane_hdr;
+    plane_vars = &iinfo->image_plane_vars;
     plane_vars->is_curr_plane_alpha_flag = FALSE;
   }
   
@@ -470,8 +462,8 @@ read_plane_header (j_image_ptr iinfo, boolean alpha)
   plane_vars->num_bands = determine_num_bands(iinfo,plane_hdr);
   TRACEMS1(iinfo, 3, JXRTRC_FREQUENCY_BANDS, plane_vars->num_bands);
   if (!alpha) {
-    iinfo->vars->num_bands_of_primary = plane_vars->num_bands;
-  } else if (plane_vars->num_bands > iinfo->vars->num_bands_of_primary) {
+    iinfo->vars.num_bands_of_primary = plane_vars->num_bands;
+  } else if (plane_vars->num_bands > iinfo->vars.num_bands_of_primary) {
     WARNMS(iinfo,JXRWRN_NUM_BANDS);
   }
   
@@ -626,21 +618,21 @@ LOCAL(int)
 determine_tile_boundaries (j_image_ptr iinfo)
 {
   
-  jxr_image_header * hdr = iinfo->hdr;
+  jxr_image_header * hdr = &iinfo->hdr;
   
   // First allocate storage
-   iinfo->vars->left_mb_index_of_tile = (*iinfo->mem->alloc_small) (
+   iinfo->vars.left_mb_index_of_tile = (*iinfo->mem->alloc_small) (
             (j_common_ptr) iinfo,
             JPOOL_IMAGE,
             (hdr->num_ver_tiles_minus1+1) * SIZEOF(UINT16)
         );
-   iinfo->vars->top_mb_index_of_tile = (*iinfo->mem->alloc_small) (
+   iinfo->vars.top_mb_index_of_tile = (*iinfo->mem->alloc_small) (
             (j_common_ptr) iinfo,
             JPOOL_IMAGE,
             (hdr->num_hor_tiles_minus1+1) * SIZEOF(UINT16)
         );
   // TODO - are we OK allocating this much storage this way?
-   iinfo->vars->num_mb_in_tile = (*iinfo->mem->alloc_small) (
+   iinfo->vars.num_mb_in_tile = (*iinfo->mem->alloc_small) (
             (j_common_ptr) iinfo,
             JPOOL_IMAGE,
             (hdr->num_ver_tiles_minus1+1) *
@@ -649,22 +641,22 @@ determine_tile_boundaries (j_image_ptr iinfo)
         );
   
   // Left MB index boundaries
-  iinfo->vars->left_mb_index_of_tile[0] = 0;
+  iinfo->vars.left_mb_index_of_tile[0] = 0;
   for (unsigned int n = 0; n < hdr->num_ver_tiles_minus1; n++) {
-    iinfo->vars->left_mb_index_of_tile[n+1] = iinfo->vars->left_mb_index_of_tile[n] + hdr->tile_width_in_mb[n];
+    iinfo->vars.left_mb_index_of_tile[n+1] = iinfo->vars.left_mb_index_of_tile[n] + hdr->tile_width_in_mb[n];
   }
-  iinfo->vars->left_mb_index_of_tile[hdr->num_ver_tiles_minus1 + 1] = iinfo->vars->mb_width;
+  iinfo->vars.left_mb_index_of_tile[hdr->num_ver_tiles_minus1 + 1] = iinfo->vars.mb_width;
   // Top MB index boundaries
-  iinfo->vars->top_mb_index_of_tile[0] = 0;
+  iinfo->vars.top_mb_index_of_tile[0] = 0;
   for (unsigned int n = 0; n < hdr->num_hor_tiles_minus1; n++) {
-    iinfo->vars->top_mb_index_of_tile[n+1] = iinfo->vars->top_mb_index_of_tile[n] + hdr->tile_height_in_mb[n];
+    iinfo->vars.top_mb_index_of_tile[n+1] = iinfo->vars.top_mb_index_of_tile[n] + hdr->tile_height_in_mb[n];
   }
-  iinfo->vars->top_mb_index_of_tile[hdr->num_hor_tiles_minus1 + 1] = iinfo->vars->mb_height;
+  iinfo->vars.top_mb_index_of_tile[hdr->num_hor_tiles_minus1 + 1] = iinfo->vars.mb_height;
   // Total number of MB in each tile
   unsigned int n=0;
   for (unsigned int i = 0; i < hdr->num_hor_tiles_minus1 + 1; i++) {
     for (unsigned int j = 0; j < hdr->num_ver_tiles_minus1 + 1; j++) {
-      iinfo->vars->num_mb_in_tile[n] =
+      iinfo->vars.num_mb_in_tile[n] =
         (hdr->tile_height_in_mb[i]) * (hdr->tile_width_in_mb[j]);
       n++;
     }
@@ -689,7 +681,8 @@ read_image_header (j_image_ptr iinfo)
   UINT16 c2;
   UINT32 c4, cc4;
   
-  jxr_image_header * hdr = iinfo->hdr;
+  /* Alias to image header */
+  jxr_image_header * hdr = &iinfo->hdr;
   
   INPUT_VARS(iinfo);
   
@@ -797,11 +790,11 @@ read_image_header (j_image_ptr iinfo)
     hdr->num_ver_tiles_minus1 = 0;
   }
   /* We can now calcualte the number of tile columns/rows */
-  iinfo->vars->num_tile_cols = hdr->num_hor_tiles_minus1 + 1;
-  iinfo->vars->num_tile_rows = hdr->num_ver_tiles_minus1 + 1;
+  iinfo->vars.num_tile_cols = hdr->num_hor_tiles_minus1 + 1;
+  iinfo->vars.num_tile_rows = hdr->num_ver_tiles_minus1 + 1;
   TRACEMS2(iinfo,3,JXRTRC_TILE_DIMENSIONS,
-    iinfo->vars->num_tile_cols,
-    iinfo->vars->num_tile_rows);
+    iinfo->vars.num_tile_cols,
+    iinfo->vars.num_tile_rows);
   
 
   /* Read in tile sequences, if present */
@@ -868,21 +861,6 @@ jpegxr_image_read_header (j_image_ptr iinfo)
 {
 
   TRACEMS(iinfo,1,JXRTRC_IMAGE_BEGIN);
-  
-  /* Allocate memory for header structure, since it is required for tile
-   * and MB layer parsing and thus for decompression (since tile and 
-   * MB layer parsing is postponed until decompression) */
-  iinfo->hdr = (*iinfo->mem->alloc_small) (
-      (j_common_ptr) iinfo,
-      JPOOL_IMAGE,
-      SIZEOF(jxr_image_header)
-  );
-  /* Allocate memory for decompression variables */
-  iinfo->vars = (*iinfo->mem->alloc_small) (
-      (j_common_ptr) iinfo,
-      JPOOL_IMAGE,
-      SIZEOF(jxr_image_vars)
-  );
     
   /* Read the image header at the start of the codestream */
   read_image_header (iinfo);
@@ -891,11 +869,11 @@ jpegxr_image_read_header (j_image_ptr iinfo)
   read_plane_header (iinfo, FALSE);
   
   /* Read the alpha plane header, if one is present */
-  if (iinfo->hdr->alpha_image_plane_flag)
+  if (iinfo->hdr.alpha_image_plane_flag)
     read_plane_header (iinfo, TRUE);
   
   /* Read the tile index table, if one is present */
-  if (iinfo->hdr->index_table_present_flag)
+  if (iinfo->hdr.index_table_present_flag)
     read_index_table (iinfo);
   
   /* Read additional bytes before coded image */
