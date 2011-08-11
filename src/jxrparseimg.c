@@ -537,23 +537,30 @@ read_plane_header (j_image_ptr iinfo, boolean alpha)
   if (!alpha) calculate_component_array_sizes (iinfo, hdr, plane_hdr);
   
   /* Output bit depth specific parameters */
-  // TODO check and output
-  INPUT_BYTE(((j_common_ptr)iinfo), c,return FALSE);
   if (hdr->output_bitdepth == JOUTDEP_BD16  ||
       hdr->output_bitdepth == JOUTDEP_BD16S ||
       hdr->output_bitdepth == JOUTDEP_BD32S) {
+        INPUT_BYTE(((j_common_ptr)iinfo), c,return FALSE);
         plane_hdr->shift_bits = c;
+        printf("Output formatting: shift bits set to 0x%x\n", plane_hdr->shift_bits);
   } else if (
       hdr->output_bitdepth == JOUTDEP_BD32F) {
+        INPUT_BYTE(((j_common_ptr)iinfo), c,return FALSE);
         INPUT_BYTE(((j_common_ptr)iinfo),cc,return FALSE);
         plane_hdr->len_mantissa = c;
         plane_hdr->exp_bias = cc;
+        printf("Output formatting: mantissa length set to %u and exponent bias %u\n",
+                    plane_hdr->len_mantissa,
+                    plane_hdr->exp_bias );
   } else if (
       hdr->output_bitdepth == JOUTDEP_RESERVED1 ||
       hdr->output_bitdepth == JOUTDEP_RESERVED2) {
         TRACEMSS(iinfo,0,JXRTRC_RESERVED_VALUE,"OUTPUT_BITDEPTH");
   }
 
+
+  printf( "index is 0x%x\n", idx);
+  
   /* QP sets (unfortunately these aren't nicely byte aligned) */
   INPUT_BITS(((j_common_ptr)iinfo),b,1,return FALSE);
   // dc_image_plane_uniform_flag
@@ -686,6 +693,8 @@ read_image_header (j_image_ptr iinfo)
   
   INPUT_VARS(iinfo);
   
+  /* Store start offset of coded image */
+  iinfo->offset = idx;
   TRACEMS1(iinfo,2,JXRTRC_IMAGE_HEAD_BEGIN,idx);
   
   /* Read in GDI signature (8 bytes) */

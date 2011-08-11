@@ -26,23 +26,73 @@
  *
  */
 GLOBAL(void)
-jpegxr_decode_tile_spatial (j_image_ptr iinfo, unsigned int index)
+jpegxr_decode_tile_spatial (j_image_ptr iinfo)
 {
   
+  INPUT_VARS(iinfo);
+    
+  printf("Decoding spatial tile at offset 0x%x\n", idx);
   
   
 
 }
 
 /*
- * Parse and decode a frequency encoded tile.
+ * Parse and decode the DC component of a coded tile.
  *
  */
 GLOBAL(void)
-jpegxr_decode_tile_frequency (j_image_ptr iinfo, unsigned int index)
+jpegxr_decode_tile_dc (j_image_ptr iinfo)
 {
   
+  INPUT_VARS(iinfo);
+    
+  printf("Decoding tile DC at offset 0x%x\n", idx);
   
+
+}
+
+/*
+ * Parse and decode the low pass component of a coded tile.
+ *
+ */
+GLOBAL(void)
+jpegxr_decode_tile_lp (j_image_ptr iinfo)
+{
+  
+  INPUT_VARS(iinfo);
+    
+  printf("Decoding tile LP at offset 0x%x\n", idx);
+
+}
+
+/*
+ * Parse and decode the high pass component of a coded tile.
+ *
+ */
+GLOBAL(void)
+jpegxr_decode_tile_hp (j_image_ptr iinfo)
+{
+  
+  INPUT_VARS(iinfo);
+    
+  printf("Decoding tile HP at offset 0x%x\n", idx);
+
+  
+}
+
+
+/*
+ * Parse and decode the flexbits of a coded tile.
+ *
+ */
+GLOBAL(void)
+jpegxr_decode_tile_flexbits (j_image_ptr iinfo)
+{
+  
+  INPUT_VARS(iinfo);
+    
+  printf("Decoding tile flexbits at offset 0x%x\n", idx);
   
 
 }

@@ -169,6 +169,8 @@ GLOBAL(void)
 jpegxr_image_start_decompress (j_image_ptr iinfo)
 {
   
+  printf( "Starting decompression\n" );
+  
   /* TODO - some check that we are ready, i.e. at the start of coded 
    * tiles */
   
@@ -182,22 +184,79 @@ jpegxr_image_start_decompress (j_image_ptr iinfo)
   unsigned int num_tiles =  iinfo->vars.num_tile_cols
                           * iinfo->vars.num_tile_cols;
   
-  /* If tiles are in spatial mode */
-  for (unsigned int n = 0; n < num_tiles; n++) {
-    /* Set current tile size in MB */
-    iinfo->tile_vars.num_mb_in_current_tile =
-      iinfo->vars.num_mb_in_tile[n];
-    /* Decode tile */
-    jpegxr_decode_tile_spatial (iinfo, n);
-  }
+  /* Copy number of bands */
+  unsigned int num_bands = iinfo->vars.num_bands_of_primary;
   
+  /* Set offset to start of codestream (current head position) */
+  unsigned int offset = iinfo->src->idx;
+  printf("Code stream begins at offset 0x%x\n",offset);
+  
+  if ( !iinfo->hdr.frequency_mode_codestream_flag ) {
+    /* If tiles are in spatial mode */
+    
+    for (unsigned int n = 0; n < num_tiles; n++) {
+      /* Set current tile size in MB */
+      iinfo->tile_vars.num_mb_in_current_tile =
+        iinfo->vars.num_mb_in_tile[n];
+      /* Seek to offset */
+      (*iinfo->src->seek_input_data) (
+                ((j_common_ptr)iinfo),
+                (long) iinfo->vars.index_offset_tile[n] + offset
+              );
+      /* Decode tile */
+      jpegxr_decode_tile_spatial (iinfo);
+    }
+    
+  } else {
   /* If tiles are in frequency mode */
-  for (unsigned int n = 0; n < num_tiles; n++) {
-    /* Set current tile size in MB */
-    iinfo->tile_vars.num_mb_in_current_tile =
-      iinfo->vars.num_mb_in_tile[n];
-    /* Decode tile */
-    jpegxr_decode_tile_frequency (iinfo, n);
+  
+    for (unsigned int n = 0; n < num_tiles; n++) {
+      /* Set current tile size in MB */
+      iinfo->tile_vars.num_mb_in_current_tile =
+        iinfo->vars.num_mb_in_tile[n];
+      printf( "Tile %u of %u contains %u macroblocks\n",
+                n+1, num_tiles, iinfo->tile_vars.num_mb_in_current_tile);
+       
+      /* Decode DC component (always present) */ 
+      /* Seek to offset */
+      (*iinfo->src->seek_input_data) (
+                ((j_common_ptr)iinfo),
+                (long) iinfo->vars.index_offset_tile[n*num_bands] + offset
+              );
+      jpegxr_decode_tile_dc (iinfo);
+      
+      /* Decode LP component, if present */      
+      if (num_bands > 1) {
+        /* Seek to offset */
+        (*iinfo->src->seek_input_data) (
+                  ((j_common_ptr)iinfo),
+                  (long) iinfo->vars.index_offset_tile[n*num_bands + 1] + offset
+                );
+        jpegxr_decode_tile_lp (iinfo);
+      }
+      
+      /* Decode HP component, if present */      
+      if (num_bands > 2) {
+        /* Seek to offset */
+        (*iinfo->src->seek_input_data) (
+                  ((j_common_ptr)iinfo),
+                  (long) iinfo->vars.index_offset_tile[n*num_bands + 2] + offset
+                );
+        jpegxr_decode_tile_hp (iinfo);
+      }
+      
+      /* Decode flexbits, if present ii*/     
+      if (num_bands > 3) {
+        /* Seek to offset */
+        (*iinfo->src->seek_input_data) (
+                  ((j_common_ptr)iinfo),
+                  (long) iinfo->vars.index_offset_tile[n*num_bands + 3] + offset
+                );
+        jpegxr_decode_tile_flexbits (iinfo);
+      }
+    
+    }
+    
   }
   
 }

@@ -574,7 +574,7 @@ struct jpegxr_image_struct {
   jpegxr_common_fields;		/* Fields shared with jpegxr_compress_struct */
 
   /* Start of instance in data source */
-  unsigned int offset;
+  UINT32 offset;
   
   /* Image header and variables */
   jxr_image_header 	hdr;
@@ -659,7 +659,7 @@ struct jpegxr_dir_struct {
   jpegxr_common_fields;		/* Fields shared with jpegxr_compress_struct */
   
   /* Start of instance in data source */
-  unsigned int offset;
+  UINT32 offset;
   
   /* Number of entries in the directory */
   UINT16 num_entries;
@@ -937,8 +937,11 @@ EXTERN(void) jpegxr_dir_start_decompress JPP((j_dir_ptr iinfo));
 EXTERN(void) jpegxr_image_start_decompress JPP((j_image_ptr iinfo));
 
 /* Tile layer parsing and decoding */
-EXTERN(void) jpegxr_decode_tile_spatial JPP((j_image_ptr iinfo, unsigned int index));
-EXTERN(void) jpegxr_decode_tile_frequency JPP((j_image_ptr iinfo, unsigned int index));
+EXTERN(void) jpegxr_decode_tile_spatial JPP((j_image_ptr iinfo));
+EXTERN(void) jpegxr_decode_tile_dc JPP((j_image_ptr iinfo));
+EXTERN(void) jpegxr_decode_tile_lp JPP((j_image_ptr iinfo));
+EXTERN(void) jpegxr_decode_tile_hp JPP((j_image_ptr iinfo));
+EXTERN(void) jpegxr_decode_tile_flexbits JPP((j_image_ptr iinfo));
 
 /* End decompression of all directories within a file */
 EXTERN(void) jpegxr_file_finish_decompress JPP((j_file_ptr iinfo));

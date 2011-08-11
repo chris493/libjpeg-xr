@@ -117,9 +117,11 @@ jpegxr_dir_read_header (j_dir_ptr dinfo)
   UINT16 c2;
   UINT32 c4;
   
-  TRACEMS(dinfo, 2, JXRTRC_DIR_BEGIN);
-  
   INPUT_VARS(dinfo);
+  
+  /* Store starting offset of directory */
+  dinfo->offset = idx;
+  TRACEMS1(dinfo, 2, JXRTRC_DIR_BEGIN, idx);
   
   /* Number of IFD entries the IFD contains */
   INPUT_2BYTES_LE(((j_common_ptr)dinfo), c2, return FALSE);
