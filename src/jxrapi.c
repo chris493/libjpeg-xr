@@ -175,9 +175,15 @@ jpegxr_image_start_decompress (j_image_ptr iinfo)
    * tiles */
   
   /* TODO - we assume for now that tiles are ordered sequentially so 
-   * we do not need to seek backwards. Eventually some implementation 
-   * should go here that sorts tiles into the order they appear, and 
-   * then allows them to be mapped to the correct output segment. */
+   * we do not need to seek backwards (much). Eventually some
+   * implementation should go here that sorts tiles into the order they
+   * appear, and then allows them to be mapped to the correct output
+   * segment. Though the specification permits tiles to be specified
+   * in any order, in practice the tiles will generally appear in order
+   * apart from when a duplicate tile is back-referenced - often done for
+   * flexbits. It might be useful to first deal with duplicate tile
+   * indexes since reading the same section of input twice is obviously
+   * unnecessary. */
   
   
   /* Calculate total number of tiles */

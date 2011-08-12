@@ -47,6 +47,9 @@
 #define JXR_GDI_SIG_HI 0x574D5048
 #define JXR_GDI_SIG_LO 0x4F544F00
 #define JXR_INDEX_TABLE_STARTCODE 0x0001
+#define JXR_TILE_STARTCODE 0x00001
+
+
 /* Profile IDC constants */
 #define JXR_PROFILE_IDC_SUBBASELINE 44
 #define JXR_PROFILE_IDC_BASELINE 55
@@ -54,6 +57,7 @@
 #define JXR_PROFILE_IDC_ADVANCED 111
 // supported profile
 #define JXR_PROFILE_IDC_MAX_SUPPORTED JXR_PROFILE_IDC_SUBBASELINE
+
 
 /* Data structures for images (arrays of samples and of DCT coefficients).
  * On 80x86 machines, the image arrays are too big for near pointers,

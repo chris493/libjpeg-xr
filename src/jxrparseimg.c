@@ -19,6 +19,12 @@
 #include "jxrdatard.h"
 #endif
 
+/* QP set parsing routines */
+#ifndef JXR_PARSE_QP
+#include "jxrparseqp.c"
+#endif
+
+
 /* Determine number of bands in a plane. The number of bands in the alpha
  * plane must be equal to or greater than then number in the primary
  * plane.
@@ -312,102 +318,6 @@ calculate_component_array_sizes (j_image_ptr iinfo, jxr_image_header * hdr, jxr_
   
 }
 
-/*
- * Parse the a quantisation paramter set.
- *  
- */          
-LOCAL(boolean)
-parse_qp (j_image_ptr iinfo, unsigned int num_components, jxr_qp_set * qp)
-{
-  UINT8 b;  // for <=8 bits
-  DEFINE_ENUM( JXR_COMPONENT_MODE, JXR_COMPONENT_MODE_DEF );
-  
-  INPUT_VARS(iinfo);
-  
-  /* Parse or infer component mode */
-  if (num_components != 1) {
-    INPUT_BITS(((j_common_ptr)iinfo),b,2,return FALSE);
-    qp->component_mode = b;
-  } else {
-    qp->component_mode = JCOMPMODE_UNIFORM;
-  }
-  
-  /* Parse any relevant quantisation parameters */
-  if (qp->component_mode == JCOMPMODE_UNIFORM) {
-    INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
-    qp->quant = b;
-    TRACEMS1(iinfo, 4, JXRTRC_UNIFORM_QP, qp->quant);
-  } else if (qp->component_mode == JCOMPMODE_SEPARATE) {
-    INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
-    qp->quant_luma = b;
-    INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
-    qp->quant_chroma = b;
-    TRACEMS2(iinfo, 4, JXRTRC_SEPERATE_QP, qp->quant_luma, qp->quant_chroma);
-  } else if (qp->component_mode == JCOMPMODE_INDEPENDENT) {
-    // allocate memory
-    UINT8 * quant_ch = (*iinfo->mem->alloc_small) (
-          (j_common_ptr) iinfo,
-          JPOOL_IMAGE,
-          num_components * SIZEOF(UINT8)
-      );
-    qp->quant_ch = quant_ch;
-    for (int i = 0; i<num_components; i++) {
-      INPUT_BITS(((j_common_ptr)iinfo),b,8,return FALSE);
-      qp->quant_ch[i] = b;
-      TRACEMS3(iinfo, 3, JXRTRC_INDEPENDENT_QP, i+1, num_components, qp->quant_ch[i]);
-    }
-  } else {
-    TRACEMSS(iinfo,0,JXRTRC_RESERVED_VALUE,"COMPONENT_MODE");
-  }
-  
-  INPUT_SYNC(iinfo);
-
-  return TRUE;
-}
-
-/*
- * Parse the DC component quantisation parameter set.
- *  
- */          
-LOCAL(boolean)
-parse_dc_qp (j_image_ptr iinfo, unsigned int num_components, jxr_qp_set * dc_qp)
-{ 
-  INPUT_VARS(iinfo);
-  TRACEMS2(iinfo,2,JXRTRC_PARSE_DC_QP, idx, bit_idx);
-  if (!parse_qp(iinfo, num_components, dc_qp))
-    return FALSE; 
-  return TRUE;
-}
-
-/*
- * Parse the low pass quantisation paramter set.
- *  
- */          
-LOCAL(boolean)
-parse_lp_qp (j_image_ptr iinfo, unsigned int num_components, unsigned int num_qps, jxr_qp_set * lp_qp)
-{ 
-  INPUT_VARS(iinfo);
-  TRACEMS2(iinfo,2,JXRTRC_PARSE_LP_QP, idx, bit_idx);
-  for (int i=0; i<num_qps; i++)
-    if (!parse_qp(iinfo, num_components, lp_qp))
-      return FALSE; 
-  return TRUE;
-}
-
-/*
- * Parse the high pass quantisation paramter set.
- *  
- */          
-LOCAL(boolean)
-parse_hp_qp (j_image_ptr iinfo, unsigned int num_components, unsigned int num_qps, jxr_qp_set * hp_qp)
-{ 
-  INPUT_VARS(iinfo);
-  TRACEMS2(iinfo,2,JXRTRC_PARSE_HP_QP, idx, bit_idx);
-  for (int i=0; i<num_qps; i++)
-    if (!parse_qp(iinfo, num_components, hp_qp))
-      return FALSE; 
-  return TRUE;
-}
 
 
 /*
@@ -559,8 +469,6 @@ read_plane_header (j_image_ptr iinfo, boolean alpha)
   }
 
 
-  printf( "index is 0x%x\n", idx);
-  
   /* QP sets (unfortunately these aren't nicely byte aligned) */
   INPUT_BITS(((j_common_ptr)iinfo),b,1,return FALSE);
   // dc_image_plane_uniform_flag
